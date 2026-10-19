@@ -30,7 +30,7 @@ strategy.py: per-driver lap-time tables, optimizer, Jev ghost strategies, backte
   v
 server.py (FastAPI) + app/static (game UI, vanilla JS)
   /api/jev       live Jev call (TypeSafe System One)
-  /api/radio     race-engineer radio line, Claude Sonnet 5 called inside ES|QL (COMPLETION)
+  /api/radio     race-engineer radio line, Claude Sonnet 4.5 called inside ES|QL (COMPLETION)
   /api/debrief   post-race debrief, same path
   /api/ask       Elastic Agent Builder agent "BoxBox Pit Wall" with custom ES|QL tools
   /api/runs      leaderboard in Elastic (boxbox-runs), shown on the Kibana dashboard "BoxBox Live"
@@ -46,7 +46,7 @@ The counterfactual is fair to reality. Your car's time is its real race time plu
 - The source pit flags are always false, so stops are derived from tyre-age resets. All 26 derived stops match the organisers' shared Hopsworks feature group `f1_pit_stops` (driver and lap), whose median pit-lane time is 21.2 s.
 - The model finds the best 1-stop at lap 29, Medium to Hard. The real teams stopped on laps 27 to 30. Verstappen's best possible strategy gains only 0.15 s, so no strategy beats Norris.
 - Most time left on the table: Albon 14.6 s, Tsunoda 12.6 s, Bottas 11.9 s, Russell 9.7 s.
-- Jev's first stop lands within 3 laps of the real team for 8 of 20 drivers, and its strategy beats the real one for 10 of 20.
+- Jev's first stop lands within 3 laps of the real team for 7 of 20 drivers, and its strategy beats the real one for 10 of 20.
 - 2023 was wet. On a drying track, slick lap times improve with tyre age, so the model is trained on 2024 only.
 
 ## Run it

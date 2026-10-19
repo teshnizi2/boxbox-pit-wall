@@ -13,7 +13,7 @@ CLIFF = {c: int(l24[l24.compound == c].tyre_life.max()) + 2 for c in DRY}
 DRV = {d["code"]: d for d in race["drivers"]}
 
 def cliff_pen(c, a):
-    over = max(0, a - CLIFF[c]); return 0.04 * over * over + 0.3 * over
+    over = max(0, a - CLIFF[c]); return min(4.0, 0.04 * over * over + 0.3 * over)   # tyre cliff: grows fast, capped at +4 s/lap
 
 def pred_table(code):
     g = pd.MultiIndex.from_product([DRY, range(1, AGES + 1), range(1, T + 1)], names=["compound", "tyre_life", "lap_number"]).to_frame(index=False)

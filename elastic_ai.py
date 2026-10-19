@@ -32,8 +32,10 @@ _KEY = _ENV.get("REMOTE_ELASTICSEARCH_API_KEY") or os.environ.get("REMOTE_ELASTI
 _ES = (_ENV.get("REMOTE_ELASTICSEARCH_URL") or os.environ.get("REMOTE_ELASTICSEARCH_URL", "")).rstrip("/")
 _KB = (_ENV.get("KIBANA_URL") or _ES.replace(".es.", ".kb.").replace(":443", "")).rstrip("/")
 
-INFERENCE_ID = ".anthropic-claude-5-sonnet-completion"  # completion endpoint, used by ES|QL COMPLETION
-CONNECTOR_ID = ".anthropic-claude-5-sonnet-chat_completion"  # Kibana connector, used by the agent
+# Claude Sonnet 5 hit the Elastic trial limit at 19:23, so Claude Sonnet 4.5 first, Elastic's general-purpose LLM as backup
+INFERENCE_IDS = [".anthropic-claude-4.5-sonnet-completion", ".gp-llm-v2-completion"]  # completion endpoints, used by ES|QL COMPLETION
+INFERENCE_ID = INFERENCE_IDS[0]
+CONNECTOR_ID = "Anthropic-Claude-Sonnet-4-5"  # Kibana connector, used by the agent and the connector fallback
 AGENT_ID = "boxbox-pitwall"
 RUNS_INDEX = "boxbox-runs"
 
@@ -62,12 +64,20 @@ def _http(method, base, path, body=None, timeout=20, params=None, kbn=False):
 # ----------------------------------------------------------------------------------------
 def _complete_esql(prompt: str, timeout: float) -> str:
     """The LLM call runs INSIDE ES|QL. The prompt is passed as a query parameter, never string-built."""
-    query = (
-        'ROW prompt = ?p | COMPLETION line = prompt WITH { "inference_id": "%s", "timeout": "%ds" } | KEEP line'
-        % (INFERENCE_ID, max(3, int(timeout) - 1))
-    )
-    d = _http("POST", _ES, "/_query", {"query": query, "params": [{"p": prompt}]}, timeout=timeout, params={"format": "json"})
-    return d["values"][0][0]
+    t0, err = time.time(), None
+    for i, ep in enumerate(INFERENCE_IDS):
+        left = timeout - (time.time() - t0)
+        if left < 3:
+            break
+        per = left * (0.6 if i < len(INFERENCE_IDS) - 1 else 1.0)
+        query = 'ROW prompt = ?p | COMPLETION line = prompt WITH { "inference_id": "%s", "timeout": "%ds" } | KEEP line' % (ep, max(3, int(per) - 1))
+        try:
+            d = _http("POST", _ES, "/_query", {"query": query, "params": [{"p": prompt}]}, timeout=per, params={"format": "json"})
+            LAST_LLM.update(model=ep)
+            return d["values"][0][0]
+        except Exception as e:  # noqa: BLE001 - try the next model
+            err = e
+    raise RuntimeError(f"all completion endpoints failed: {_scrub(err)[:200]}")
 
 
 def _complete_connector(prompt: str, timeout: float) -> str:

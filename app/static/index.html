@@ -48,6 +48,7 @@
 </section>
 
 <section id="screen-race" class="screen race" hidden>
+  <div id="room-wait" class="room-wait" hidden><div class="rw-card"><span class="rw-room" id="rw-room">Room</span><span class="rw-big num" id="rw-big">Waiting</span><span class="rw-text" id="rw-text">Waiting for the host to start the race.</span></div></div>
   <header class="topbar">
     <div class="brand"><span class="mark">BoxBox</span></div>
     <div class="tb-item"><span class="tb-label">Lap</span><span class="tb-big num"><span id="lap-now">1</span><span class="tb-of" id="lap-of">/72</span></span></div>
@@ -90,6 +91,11 @@
           <button data-c="MEDIUM" style="--c:#f5c518"><span class="cp-l">M</span>Medium</button>
           <button data-c="HARD" style="--c:#f2f2f2"><span class="cp-l">H</span>Hard</button>
         </div>
+        <div class="phone-box" role="group" aria-label="Box now onto">
+          <button data-c="SOFT" style="--c:#ff4b55"><span class="cp-l">S</span>Soft</button>
+          <button data-c="MEDIUM" style="--c:#f5c518"><span class="cp-l">M</span>Medium</button>
+          <button data-c="HARD" style="--c:#f2f2f2"><span class="cp-l">H</span>Hard</button>
+        </div>
         <div class="box-note" id="box-note">Press B to box.</div>
         <div class="serve-line num" id="serve-line"></div>
         <button id="btn-cancel-box" class="btn-quiet" hidden>Cancel the stop</button>
@@ -110,6 +116,7 @@
         <button id="btn-jev-take" class="btn-quiet" hidden>Take Jev's call</button>
       </div>
     </div>
+    <div class="panel mini-tower" id="mini-tower"></div>
     <div class="col-right panel tower">
       <div class="tower-head"><span class="panel-title">Timing</span><span class="meta" id="tower-lap">Starting grid</span></div>
       <div class="trow thead"><span class="t-pos">P</span><span class="t-bar"></span><span class="t-code">Driver</span><span class="t-gap">Interval</span><span class="t-tyre">Tyre</span><span class="t-stops">Stops</span></div>
@@ -184,8 +191,16 @@
   <div class="room-grid">
     <div class="panel map-panel room-map-panel"><canvas id="room-map" aria-label="Track map with every player in the room"></canvas></div>
     <div class="panel room-list">
+      <div id="room-lobby" class="room-lobby" hidden>
+        <div class="panel-title">Join the race</div>
+        <img id="room-qr" class="room-qr" alt="QR code to join this room">
+        <div class="room-url num" id="room-url"></div>
+        <button id="btn-room-start" class="btn-primary">Start race</button>
+        <p class="meta" id="room-start-note">2.5 s per lap, 5 s countdown.</p>
+      </div>
+      <div id="room-winner" class="room-winner" hidden></div>
       <div class="panel-title">Live strategies <span class="meta" id="room-updated"></span></div>
-      <div class="rrow rhead"><span>Player</span><span>Driver</span><span class="num">Lap</span><span class="num">Pos</span><span class="num">Vs real</span></div>
+      <div class="rrow rhead"><span>Player</span><span>Driver</span><span class="num">Pos</span><span class="num">Gained</span><span class="num">Vs real</span></div>
       <div id="room-rows"></div>
     </div>
   </div>
@@ -222,14 +237,16 @@
       <!-- B: Hopsworks -->
       <rect class="a-box" x="560" y="48" width="480" height="340" rx="10"/>
       <text class="a-h" x="590" y="104">Hopsworks feature store</text>
-      <text class="a-t a-tight" x="590" y="146">FG lap_features · <tspan class="a-num">2,769 laps</tspan></text>
-      <text class="a-t a-tight" x="590" y="178">FG driver_style · vector index</text>
-      <text class="a-t a-tight" x="590" y="210">FG jev_pitwall_calls</text>
-      <text class="a-t a-tight" x="590" y="242">Feature View laptime_fv</text>
-      <text class="a-t a-tight" x="590" y="274">Model Registry boxbox_laptime v1</text>
-      <text class="a-t a-tight a-hi" x="590" y="306">MAE 0.47 s on held-out stints</text>
-      <text class="a-t a-tight" x="590" y="350">Model 2: boxbox_pitcall</text>
-      <text class="a-t a-tight a-hi" x="886" y="350">AUC 0.90</text>
+      <text class="a-t a-tight" x="590" y="140">FG lap_features · <tspan class="a-num">2,769 laps</tspan></text>
+      <text class="a-t a-tight" x="590" y="168">FG driver_style · vector index</text>
+      <text class="a-t a-tight" x="590" y="196">FG jev_pitwall_calls</text>
+      <text class="a-t a-tight" x="590" y="224">Shared FGs from hopsworks_default</text>
+      <text class="a-s" x="590" y="248">(cross-project feature sharing)</text>
+      <text class="a-t a-tight" x="590" y="280">Feature View laptime_fv</text>
+      <text class="a-t a-tight" x="590" y="308">Model Registry boxbox_laptime v1</text>
+      <text class="a-t a-tight a-hi" x="590" y="336">MAE 0.47 s on held-out stints</text>
+      <text class="a-t a-tight" x="590" y="370">Model 2: boxbox_pitcall</text>
+      <text class="a-t a-tight a-hi" x="880" y="370">AUC 0.90</text>
       <!-- B -> C -->
       <line class="a-ln" x1="1044" y1="218" x2="1122" y2="218" marker-end="url(#ah)"/>
       <text class="a-lbl" x="1085" y="204" text-anchor="middle">model</text>
@@ -246,7 +263,7 @@
       <rect class="a-group" x="30" y="470" width="1060" height="310" rx="10"/>
       <text class="a-h a-h2" x="56" y="514">Elastic services</text>
       <g class="a-card"><rect x="50" y="534" width="248" height="226" rx="8"/>
-        <text class="a-t a-tb" x="70" y="578">Claude Sonnet 5</text><text class="a-t" x="70" y="614">via ES|QL</text><text class="a-t" x="70" y="646">COMPLETION</text><text class="a-s" x="70" y="700">Team radio</text><text class="a-s" x="70" y="730">and debrief</text></g>
+        <text class="a-t a-tb" x="70" y="578">Claude Sonnet 4.5</text><text class="a-t" x="70" y="614">via ES|QL</text><text class="a-t" x="70" y="646">COMPLETION</text><text class="a-s" x="70" y="700">Team radio</text><text class="a-s" x="70" y="730">and debrief</text></g>
       <g class="a-card"><rect x="310" y="534" width="248" height="226" rx="8"/>
         <text class="a-t a-tb" x="330" y="578">Agent Builder</text><text class="a-t" x="330" y="614">"BoxBox Pit Wall"</text><text class="a-t" x="330" y="646">5 ES|QL tools</text><text class="a-s" x="330" y="700">Ask the pit wall</text><text class="a-s" x="330" y="730">on the finish screen</text></g>
       <g class="a-card"><rect x="570" y="534" width="248" height="226" rx="8"/>
@@ -275,6 +292,7 @@
   </div>
 </section>
 
+<div id="toast" class="toast" hidden><span id="toast-text"></span><button id="toast-undo" class="btn-quiet">Undo</button></div>
 </main>
 <script src="js/engine.js"></script>
 <script src="mock/mock.js"></script>

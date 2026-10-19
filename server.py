@@ -38,6 +38,9 @@ def jev(b: dict = Body(...)):
 @app.post("/api/radio")
 def radio(b: dict = Body(...)):
     if not E: return {"text": "Copy. Box, box."}
+    d = b.get("detail")
+    if isinstance(d, dict):  # the UI sends a situation object: turn it into plain words for the LLM
+        b = {**b, "detail": ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in d.items() if k not in ("player_name",) and v not in (None, "", []))}
     return {"text": E.radio_line(b)}
 
 @app.post("/api/debrief")
@@ -111,16 +114,56 @@ def similar_drivers(code: str, k: int = 4):
     except Exception as e:
         return JSONResponse({"error": type(e).__name__}, status_code=200)
 
+def _room(room):
+    return ROOMS.setdefault(room[:16], {"started_at": None, "lap_seconds": 2.5, "players": {}})
+
+@app.post("/api/room/{room}/start")
+def room_start(room: str, b: dict = Body(default={})):
+    """host starts the shared race clock: every phone and the big screen derive the current lap from it"""
+    r = _room(room)
+    r["lap_seconds"] = float(b.get("lap_seconds", 2.5)); r["started_at"] = time.time() + float(b.get("countdown", 5))
+    for p in r["players"].values(): p["stints"], p["lap"] = None, 0
+    return {"ok": True, "started_at": r["started_at"], "lap_seconds": r["lap_seconds"], "server_now": time.time()}
+
+@app.post("/api/room/{room}/join")
+def room_join(room: str, b: dict = Body(...)):
+    r = _room(room)
+    if len(r["players"]) >= 40: return {"ok": False, "error": "room full"}
+    name = str(b.get("player_name") or "anon")[:24]
+    r["players"][name] = {"player_name": name, "driver": b.get("driver", "VER"), "stints": None, "lap": 0, "joined": time.time()}
+    return {"ok": True, "player_name": name, "server_now": time.time(), "started_at": r["started_at"], "lap_seconds": r["lap_seconds"]}
+
 @app.post("/api/room/{room}/state")
 def room_state(room: str, b: dict = Body(...)):
-    r = ROOMS.setdefault(room, {"started_at": time.time(), "players": {}})
+    r = _room(room)
     name = str(b.get("player_name", "anon"))[:24]
-    r["players"][name] = {k: b.get(k) for k in ("player_name", "driver", "stints", "lap")}
-    return {"ok": True}
+    p = r["players"].setdefault(name, {"player_name": name, "joined": time.time()})
+    p.update({k: b.get(k) for k in ("driver", "stints", "lap") if k in b})
+    return {"ok": True, "server_now": time.time()}
 
 @app.get("/api/room/{room}")
 def room_get(room: str):
-    r = ROOMS.get(room, {"started_at": None, "players": {}})
-    return {"started_at": r["started_at"], "players": list(r["players"].values())}
+    r = _room(room)
+    return {"started_at": r["started_at"], "lap_seconds": r["lap_seconds"], "server_now": time.time(), "players": list(r["players"].values())}
+
+@app.get("/api/qr")
+def qr(text: str):
+    """QR code as SVG (segno, generated locally)"""
+    import io, segno
+    from fastapi.responses import Response
+    buf = io.BytesIO(); segno.make(text, error="m").save(buf, kind="svg", scale=8, dark="#000000", light="#ffffff", border=2)
+    return Response(buf.getvalue(), media_type="image/svg+xml")
+
+@app.get("/api/lanurl")
+def lanurl():
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1)); ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return {"url": f"http://{ip}:8000"}
 
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")

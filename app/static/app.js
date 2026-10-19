@@ -30,6 +30,7 @@
     room: (qs.get('room') || '').trim().slice(0, 40) || null, bigScreen: qs.get('screen') === '1',
   };
 
+  const isPhone = () => { try { return matchMedia('(max-width: 699px)').matches; } catch (e) { return false; } };
   const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
 
@@ -148,25 +149,37 @@
     const grid = $('#driver-grid');
     const ds = S.race.drivers.slice().sort((a, b) => a.grid - b.grid);
     grid.innerHTML = ds.map((d) => `
-      <button class="dcard${d.code === S.code ? ' sel' : ''}" data-code="${esc(d.code)}" style="--team:${esc(d.color)}">
-        <span class="dc-code">${esc(d.code)}</span>
+      <button class="dcard${d.code === S.code ? ' sel' : ''}" data-code="${esc(d.code)}" style="--team:${esc(d.color)}" title="${esc(d.team)} · grid P${d.grid}, finished P${d.finish}">
+        <span class="dc-top"><span class="dc-code">${esc(d.code)}</span><span class="dc-gf">P${d.grid} → <b>P${d.finish}</b></span></span>
         <span class="dc-name">${esc(d.name)}</span>
-        <span class="dc-team">${esc(d.team)}</span>
-        <span class="dc-nums num"><span>Grid <b>P${d.grid}</b></span><span>Finish <b>P${d.finish}</b></span></span>
-        <span class="dc-table" data-code="${esc(d.code)}">&nbsp;</span>
+        <span class="dc-opp" data-code="${esc(d.code)}"><span class="o-bar"><span class="o-fill"></span></span><span class="o-text">&nbsp;</span></span>
       </button>`).join('');
+    // hero: the Zandvoort outline from race.json, drawn quietly behind the headline
+    const P = S.race.track.path;
+    let minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
+    for (const [x, y] of P) { minx = Math.min(minx, x); maxx = Math.max(maxx, x); miny = Math.min(miny, y); maxy = Math.max(maxy, y); }
+    const sc = 940 / Math.max(maxx - minx, maxy - miny), ox = (1000 - (maxx - minx) * sc) / 2, oy = (1000 - (maxy - miny) * sc) / 2;
+    const dpath = P.map(([x, y], i) => (i ? 'L' : 'M') + ((x - minx) * sc + ox).toFixed(1) + ',' + ((y - miny) * sc + oy).toFixed(1)).join('') + 'Z';
+    const [sx0, sy0] = [(P[0][0] - minx) * sc + ox, (P[0][1] - miny) * sc + oy];
+    $('#hero-track').innerHTML = `<path d="${dpath}"/><path class="inner" d="${dpath}"/><circle cx="${sx0.toFixed(1)}" cy="${sy0.toFixed(1)}" r="16"/>`;
     $$('.dcard', grid).forEach((b) => b.addEventListener('click', () => {
       S.code = b.dataset.code;
       $$('.dcard', grid).forEach((x) => x.classList.toggle('sel', x === b));
       updatePicked();
     }));
     updatePicked();
-    // "pit wall left X s on the table" = -optimizer.delta_vs_real, filled as tables arrive
-    S.race.drivers.forEach((d) => table(d.code).then((dt) => {
-      const el = grid.querySelector(`.dc-table[data-code="${d.code}"]`);
-      const x = dt && dt.optimizer && E.ok(dt.optimizer.delta_vs_real) ? -dt.optimizer.delta_vs_real : null;
-      if (el && x != null) el.innerHTML = x > 0.005 ? `Pit wall left <b>${x < 1 ? x.toFixed(2) : x.toFixed(1)} s</b> on the table` : 'Pit wall got it right';
-    }).catch(() => {}));
+    // "pit wall left X s on the table" = -optimizer.delta_vs_real, as a bar scaled to the biggest gap
+    Promise.all(S.race.drivers.map((d) => table(d.code).catch(() => null))).then((tabs) => {
+      const xs = tabs.map((dt) => (dt && dt.optimizer && E.ok(dt.optimizer.delta_vs_real) ? Math.max(0, -dt.optimizer.delta_vs_real) : null));
+      const max = Math.max(0.01, ...xs.filter((x) => x != null));
+      S.race.drivers.forEach((d, i) => {
+        const el = grid.querySelector(`.dc-opp[data-code="${d.code}"]`), x = xs[i];
+        if (!el || x == null) return;
+        $('.o-fill', el).style.width = (x / max) * 100 + '%';
+        $('.o-text', el).innerHTML = x > 0.005 ? `Pit wall left <b>${x < 1 ? x.toFixed(2) : x.toFixed(1)} s</b>` : 'Pit wall got it right';
+      });
+      renderStartTiles();
+    });
     const ev = $('#event-line');
     if (ev) ev.textContent = `${S.race.season} ${S.race.event} · Zandvoort · ${S.N} laps · pit loss ${S.race.pit_loss_s.toFixed(1)} s`;
   }
@@ -251,7 +264,15 @@
     renderJev();
     show('race');
     setSpeed(1);
-    S.running = true;
+    S.roomMode = !!(S.room && !S.bigScreen && !S.mock);
+    $('#screen-race').classList.toggle('room-mode', S.roomMode);
+    S.running = !S.roomMode;
+    if (S.roomMode) {
+      $('#rw-room').textContent = 'Room ' + S.room + ' · ' + S.name + ' · ' + S.code;
+      $('#room-wait').hidden = false;
+      fetchJSON('/api/room/' + encodeURIComponent(S.room) + '/join', { method: 'POST', body: JSON.stringify({ player_name: S.name, driver: S.code }) }, 5000).then(syncClock).catch(() => {});
+      roomSync();
+    }
     updateRaceUI();
     radio('start', { grid: S.rd.grid, compound: S.dt.start.compound });
     askJev(1);
@@ -284,7 +305,8 @@
     const dtR = lastTs ? Math.min(0.1, (ts - lastTs) / 1000) : 0;
     lastTs = ts;
     if (S.screen === 'race') {
-      if (S.running && S.speed > 0) S.T += dtR * S.speed * S.refLap;
+      if (S.roomMode) roomTick(dtR);
+      else if (S.running && S.speed > 0) S.T += dtR * S.speed * S.refLap;
       const done = lapsDoneAt(S.T);
       if (done > S.lapsDone) {
         const prev = S.lapsDone;
@@ -297,56 +319,126 @@
   }
 
   // ---------- multiplayer room ----------
+  // Shared race clock: lap = floor((server_now - started_at) / lap_seconds) + 1, offset estimated per poll.
+  const clock = { offset: 0, started_at: null, lap_seconds: 2.5, syncing: false, t: 0 };
+  function syncClock(res, t0, t1) {
+    if (!res) return;
+    if (E.ok(res.server_now)) {
+      const local = t0 && t1 ? (t0 + t1) / 2000 : Date.now() / 1000;
+      clock.offset = res.server_now - local;
+    }
+    clock.started_at = E.ok(res.started_at) ? res.started_at : null;
+    if (E.ok(res.lap_seconds) && res.lap_seconds > 0) clock.lap_seconds = res.lap_seconds;
+  }
+  const serverNow = () => Date.now() / 1000 + clock.offset;
+  const clockLaps = () => (clock.started_at == null ? null : (serverNow() - clock.started_at) / clock.lap_seconds);
+  async function roomSync() {
+    if (clock.syncing) return;
+    clock.syncing = true;
+    const t0 = Date.now();
+    try { const res = await fetchJSON('/api/room/' + encodeURIComponent(S.room), { method: 'GET' }, 4000); syncClock(res, t0, Date.now()); setNet('online'); return res; }
+    catch (e) { setNet('offline'); return null; }
+    finally { clock.syncing = false; }
+  }
+  // Map clock laps u to race time on the player's own cum, so laps completed = floor(u) exactly.
+  function tAtLaps(cum, u) {
+    const n = cum.length;
+    if (u <= 0) return 0;
+    const k = Math.floor(u);
+    if (k >= n) return cum[n - 1] + 1;
+    const st = k > 0 ? cum[k - 1] : 0;
+    return st + (u - k) * (cum[k] - st);
+  }
+  function roomTick(dtR) {
+    clock.t += dtR;
+    if (clock.t >= 1) { clock.t = 0; roomSync(); }
+    const u = clockLaps();
+    const wait = $('#room-wait');
+    if (u == null) { wait.hidden = false; $('#rw-big').textContent = 'Waiting'; $('#rw-text').textContent = 'Waiting for the host to start the race on the big screen.'; return; }
+    if (u < 0) { wait.hidden = false; $('#rw-big').textContent = Math.ceil(-u * clock.lap_seconds); $('#rw-text').textContent = 'Lights out in…'; return; }
+    if (!wait.hidden) wait.hidden = true;
+    S.running = true;
+    S.T = tAtLaps(S.cum, Math.min(u, S.N + 0.01));
+  }
   // Player side: send our strategy on start, every BOX, every 5 laps and at the flag.
   function roomPost() {
     if (!S.room || S.mock || !S.rd) return;
     const body = { player_name: S.name, driver: S.code, stints: S.stints, lap: Math.min(S.lapsDone, S.N) };
     fetchJSON('/api/room/' + encodeURIComponent(S.room) + '/state', { method: 'POST', body: JSON.stringify(body) }, 4000).catch(() => {});
   }
-  // Big screen: poll the room every second and draw every player with the ghost math.
-  const room = { players: [], cars: {}, last: 0, polling: false };
+  // Big screen: lobby with a QR code, then the shared clock; every player is drawn with the ghost math.
+  const room = { cars: {}, last: 0, polling: false, joinUrl: '', starting: false };
   async function pollRoom() {
     if (room.polling) return;
     room.polling = true;
+    const t0 = Date.now();
     try {
       const res = await fetchJSON('/api/room/' + encodeURIComponent(S.room), { method: 'GET' }, 4000);
+      syncClock(res, t0, Date.now());
       setNet('online');
-      const ps = (res && res.players) || [];
-      await Promise.all(Array.from(new Set(ps.map((p) => p.driver))).filter((c) => driver(c)).map(table));
-      room.players = ps.filter((p) => driver(p.driver) && Array.isArray(p.stints) && p.stints.length);
-      for (const p of room.players) {
-        const key = (p.player_name || '') + '|' + p.driver;
-        const sig = JSON.stringify(p.stints);
+      const ps = ((res && res.players) || []).filter((p) => p && driver(p.driver));
+      await Promise.all(Array.from(new Set(ps.map((p) => p.driver))).map((c) => table(c).catch(() => null)));
+      for (const p of ps) {
+        const rd = driver(p.driver), dt = S.tables[p.driver];
+        if (!dt) continue;
+        const posted = Array.isArray(p.stints) && p.stints.length > 0;
+        const stints = posted ? p.stints : E.stintsFromPits(dt.start, [], E.nLaps(rd));
+        const key = (p.player_name || '') + '|' + p.driver, sig = JSON.stringify(stints);
         let car = room.cars[key];
         if (!car || car.sig !== sig) {
-          const rd = driver(p.driver), dt = S.tables[p.driver];
-          const cum = E.carCum(rd, dt, p.stints, S.race.pit_loss_s);
-          car = Object.assign(car || { T: 0 }, { sig, cum, rd, dt, name: p.player_name || 'Player', code: p.driver });
+          car = Object.assign(car || {}, { sig, stints, rd, dt, name: p.player_name || 'Player', code: p.driver, cum: E.carCum(rd, dt, stints, S.race.pit_loss_s) });
           room.cars[key] = car;
         }
-        car.lap = Math.max(0, Math.min(p.lap || 0, car.cum.length));
-        car.stints = p.stints;
-        car.seen = Date.now();
+        car.lap = p.lap || 0; car.seen = Date.now();
       }
       room.last = Date.now();
-      renderRoomList();
     } catch (e) { setNet('offline'); }
-    finally { room.polling = false; }
+    finally { room.polling = false; renderRoomPanel(); }
   }
-  function renderRoomList() {
-    const cars = Object.values(room.cars).filter((c) => Date.now() - c.seen < 15000);
-    const rows = cars.map((c) => {
-      const L = c.lap;
-      const pos = L > 0 ? E.posAt(S.race, c.code, c.cum[L - 1], L) : c.rd.grid;
-      const dl = L > 0 ? c.cum[L - 1] - c.rd.cum[L - 1] : 0;
-      return { c, L, pos, dl };
-    }).sort((a, b) => a.pos - b.pos || a.dl - b.dl);
-    $('#room-count').textContent = rows.length;
+  function roomCars() { return Object.values(room.cars).filter((c) => Date.now() - c.seen < 30000); }
+  function standings() {
+    const u = clockLaps(), started = u != null && u >= 0;
+    const N = S.race.laps_total || 72;
+    const L = started ? Math.min(N, Math.floor(u)) : 0;
+    const rows = roomCars().map((c) => {
+      const n = c.cum.length, l = Math.min(L, n);
+      const dsq = E.compoundsUsed(c.stints).filter((x) => E.DRY.includes(x)).length < 2;
+      let pos, real, dl;
+      if (l >= n && n > 0) {
+        pos = E.classify(S.race, c.code, c.cum).find((r) => r.mine).pos; real = c.rd.finish; dl = c.cum[n - 1] - c.rd.cum[n - 1];
+      } else if (l > 0) {
+        pos = E.posAt(S.race, c.code, c.cum[l - 1], l); real = E.posAt(S.race, c.code, c.rd.cum[l - 1], l); dl = c.cum[l - 1] - c.rd.cum[l - 1];
+      } else { pos = c.rd.grid; real = c.rd.grid; dl = 0; }
+      return { c, pos, gained: real - pos, dl, dsq, done: l >= n };
+    });
+    rows.sort((a, b) => (a.done && a.dsq) - (b.done && b.dsq) || b.gained - a.gained || a.dl - b.dl);
+    return { rows, started, L, u, N };
+  }
+  function renderRoomPanel() {
+    const st = standings();
+    $('#room-count').textContent = st.rows.length;
+    const lobby = !st.started;
+    $('#room-lobby').hidden = !lobby;
+    if (lobby) {
+      const u = clockLaps();
+      const btn = $('#btn-room-start');
+      if (u != null && u < 0) { btn.disabled = true; btn.textContent = `Lights out in ${Math.ceil(-u * clock.lap_seconds)} s`; }
+      else if (!room.starting) { btn.disabled = false; btn.textContent = 'Start race'; }
+    }
+    $('#room-join').textContent = lobby ? `Scan to join: ${room.joinUrl || location.origin + '/?room=' + S.room}` : `Lap ${Math.min(st.N, Math.floor(st.u) + 1)}/${st.N} · ${clock.lap_seconds} s per lap`;
     $('#room-updated').textContent = room.last ? 'updated ' + new Date(room.last).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
-    $('#room-rows').innerHTML = rows.length ? rows.map((r) => `<div class="rrow" style="--team:${esc(r.c.rd.color)}">
+    $('#room-rows').innerHTML = st.rows.length ? st.rows.map((r) => `<div class="rrow" style="--team:${esc(r.c.rd.color)}">
         <span class="r-name">${esc(r.c.name)}<small>${esc(E.stintsLabel(r.c.stints))}</small></span>
-        <span class="r-drv"><i></i>${esc(r.c.code)}</span><span class="num">${r.L}</span><span class="num">P${r.pos}</span><span class="num">${fmtDelta(r.dl)}</span></div>`).join('')
-      : '<p class="empty">Waiting for players. Open this game with ?room=' + esc(S.room) + ' on any laptop and press Start.</p>';
+        <span class="r-drv"><i></i>${esc(r.c.code)}</span>
+        <span class="num">${st.started ? (r.done && r.dsq ? 'DSQ' : 'P' + r.pos) : 'P' + r.c.rd.grid}</span>
+        <span class="num">${st.started ? fmtGained(r.gained) : '—'}</span>
+        <span class="num">${st.started ? fmtDelta(r.dl) : '—'}</span></div>`).join('')
+      : '<p class="empty">No players yet. Scan the code or open ?room=' + esc(S.room) + ' and press Start race.</p>';
+    const w = $('#room-winner');
+    const fin = st.started && st.L >= st.N;
+    const best = fin ? st.rows.find((r) => !r.dsq) : null;
+    w.hidden = !best;
+    if (best) w.innerHTML = `<div class="w-label">Pit wall of the night</div><div class="w-name">${esc(best.c.name)}</div><div class="w-text">${esc(best.c.rd.name)}: P${best.pos} from a real P${best.c.rd.finish} (${fmtGained(best.gained)}), ${fmtDelta(best.dl)} vs the real team. ${esc(E.stintsLabel(best.c.stints))}</div>`;
   }
   let roomTimer = 0;
   function drawRoom(dtR) {
@@ -359,22 +451,35 @@
     c.beginPath(); P.forEach((p, i) => { const [x, y] = mx(p); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.closePath();
     c.strokeStyle = '#2e2d33'; c.lineWidth = 22; c.stroke();
     c.strokeStyle = '#46454c'; c.lineWidth = 2; c.stroke();
-    for (const car of Object.values(room.cars)) {
-      if (Date.now() - car.seen > 15000) continue;
-      // each player is drawn where they are in their own race, eased between polls
-      const target = car.lap > 0 ? car.cum[car.lap - 1] : 0;
-      car.T += (target - car.T) * Math.min(1, dtR * 2.5);
-      const [x, y] = mx(carPos(car.cum, car.T));
+    const u = clockLaps();
+    if (u == null || u < 0) return;
+    // one race clock: the real winner's pace sets race time, each player sits where their strategy puts them
+    const ref = S.race.drivers.slice().sort((a, b) => a.finish - b.finish)[0];
+    const T = tAtLaps(ref.cum, Math.min(u, S.race.laps_total || 72));
+    for (const car of roomCars()) {
+      const [x, y] = mx(carPos(car.cum, T));
       c.setLineDash([5, 4]); c.beginPath(); c.arc(x, y, 13, 0, Math.PI * 2); c.lineWidth = 3; c.strokeStyle = '#ffffff'; c.stroke(); c.setLineDash([]);
       c.beginPath(); c.arc(x, y, 8, 0, Math.PI * 2); c.fillStyle = car.rd.color; c.fill();
       label(c, x, y, `${car.name} · ${car.code}`, '#ffffff', true);
     }
   }
-  function startRoomScreen() {
+  async function startRoomRace() {
+    room.starting = true;
+    const btn = $('#btn-room-start'); btn.disabled = true; btn.textContent = 'Starting…';
+    const t0 = Date.now();
+    try { const res = await fetchJSON('/api/room/' + encodeURIComponent(S.room) + '/start', { method: 'POST', body: JSON.stringify({ lap_seconds: 2.5, countdown: 5 }) }, 5000); syncClock(res, t0, Date.now()); }
+    catch (e) { btn.textContent = 'Could not start. Try again'; }
+    finally { room.starting = false; pollRoom(); }
+  }
+  async function startRoomScreen() {
     $('#room-name').textContent = S.room;
-    $('#room-join').textContent = `Players join at ${location.origin}/?room=${S.room}`;
     show('room');
-    renderRoomList();
+    $('#btn-room-start').addEventListener('click', startRoomRace);
+    try { const r = await fetchJSON('/api/lanurl', { method: 'GET' }, 4000); if (r && r.url) room.joinUrl = r.url.replace(/\/$/, '') + '/?room=' + encodeURIComponent(S.room); } catch (e) { /* fall back to this origin */ }
+    if (!room.joinUrl) room.joinUrl = location.origin + '/?room=' + encodeURIComponent(S.room);
+    $('#room-qr').src = '/api/qr?text=' + encodeURIComponent(room.joinUrl);
+    $('#room-url').textContent = room.joinUrl;
+    renderRoomPanel();
     pollRoom();
   }
 
@@ -382,7 +487,7 @@
     if (S.plan.pit[L]) feed(L, `Pit stop done: ${cmp(S.plan.comp[L + 1]).name} tyres fitted.`, 'pit');
     if (L >= S.N) { S.running = false; updateRaceUI(); roomPost(); setTimeout(finishRace, 1200); return; }
     updateRaceUI();
-    if (L % 5 === 0) roomPost();
+    if (L % 3 === 0) roomPost();
     const cur = L + 1, c = S.plan.comp[cur], a = S.plan.age[cur], cl = (S.dt.cliff || {})[c] || 35;
     const key = c + '@' + S.stints.findIndex((s) => cur >= s.start_lap && cur <= s.end_lap);
     if (a > cl && !S.cliffWarned[key]) { S.cliffWarned[key] = true; radio('cliff', { compound: c, age: a, cliff: cl }); }
@@ -408,6 +513,27 @@
     radio('box', { compound: c, lap: cur });
     serve(c, true);
     roomPost();
+  }
+  let toastTimer = 0;
+  function phoneBox(c) {
+    if (S.screen !== 'race' || curLap() >= S.N || S.lapsDone >= S.N) return;
+    chooseCompound(c);
+    $$('.phone-box button').forEach((b) => b.classList.toggle('on', b.dataset.c === c));
+    $('#toast-text').textContent = `Boxing for ${cmp(c).name}s at the end of lap ${curLap()}`;
+    $('#toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => ($('#toast').hidden = true), 1000);
+  }
+  function renderMiniTower(tw) {
+    const el = $('#mini-tower'); if (!el) return;
+    const rows = tw.rows.filter((r) => r.kind !== 'ghost');
+    const i = rows.findIndex((r) => r.kind === 'you');
+    const from = Math.max(0, Math.min(i - 2, rows.length - 5));
+    el.innerHTML = rows.slice(from, from + 5).map((r) => {
+      const t = cmp(r.tyre.c);
+      const gap = r.int == null ? (r.pos === 1 && tw.L > 0 ? 'Leader' : '') : '+' + r.int.toFixed(1);
+      return `<div class="trow ${r.kind}" style="--team:${esc(r.color)}"><span class="t-pos num">${r.pos}</span><span class="t-bar"></span><span class="t-code">${esc(r.code)}${r.kind === 'you' ? ' <span class="tag-you">You</span>' : ''}</span><span class="t-gap num">${gap}</span><span class="t-tyre"><span class="tyre-dot" style="--c:${t.color}">${t.l}</span><span class="num">${r.tyre.a}</span></span><span class="t-stops num">${r.stops}</span></div>`;
+    }).join('');
   }
   // Hopsworks model serving: the deployed lap-time model predicts the next 5 laps on a new set.
   const serveState = { inflight: false, last: '' };
@@ -509,6 +635,8 @@
     $('#tyre-rule').dataset.state = used.length >= 2 ? 'ok' : 'warn';
     renderBox();
     renderStints();
+    renderMiniTower(tw);
+    if (!S.pits.some((p) => p.lap === cur)) $$('.phone-box button.on').forEach((b) => b.classList.remove('on'));
   }
 
   function stintBar(stints, n, upto) {
@@ -716,7 +844,7 @@
   function initAudio() {
     if (S.audio) return;
     try { S.audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { S.audio = null; }
-    S.voice = lsGet('boxbox.voice', '1') === '1' && 'speechSynthesis' in window;
+    S.voice = lsGet('boxbox.voice', isPhone() ? '0' : '1') === '1' && 'speechSynthesis' in window;
     renderVoice();
   }
   function click() {
@@ -877,8 +1005,30 @@
   }
   function closeHowto() { $('#howto').hidden = true; }
   const nameOf = (code) => { const d = driver(code); return d ? d.name.split(' ').slice(-1)[0] : code; };
+  let validation;
+  async function loadValidation() {
+    if (validation !== undefined) return validation;
+    if (S.mock) return (validation = null);
+    try { validation = await fetchJSON('data/validation.json', { method: 'GET' }, 6000); } catch (e) { validation = null; }
+    return validation;
+  }
+  function validationCard(v) {
+    if (!v || !E.ok(v.derived_stops)) return null;
+    const pl = E.ok(v.official_pit_lane_median_s) ? ` Official pit-lane time ${v.official_pit_lane_median_s.toFixed(1)} s; total loss with in and out lap ${(v.our_total_pit_loss_s || S.race.pit_loss_s).toFixed(1)} s.` : '';
+    return ['Validated pit stops', `${v.exact_matches} of ${v.official_stops}`, `Our ${v.derived_stops} derived stops match the organisers' shared Hopsworks FG f1_pit_stops.${pl}`, `derived stops match the official Hopsworks FG`];
+  }
+  async function renderStartTiles() {
+    const cards = await computeInsights();
+    const pick = ['Validated pit stops', 'Best plan for', 'Time left on the table', 'Jev vs the real teams'];
+    const chosen = pick.map((p) => cards.find((c) => c[0].startsWith(p))).filter(Boolean);
+    if (!chosen.some((c) => c[0] === 'Validated pit stops')) { const ps = cards.find((c) => c[0] === 'Pit stop'); if (ps) chosen.unshift(ps); }
+    $('#start-tiles').innerHTML = chosen.slice(0, 4).map(([l, f, t, short], i) => `<div class="stile"><span class="i-label meta">${esc(l)}</span><span class="s-fig${i === 2 ? ' acc' : ''}">${esc(f)}</span><span class="s-text">${esc(short || t)}</span></div>`).join('');
+  }
   async function renderInsights() {
-    const el = $('#insights');
+    const cards = await computeInsights();
+    $('#insights').innerHTML = cards.map(([l, f, t]) => `<div class="icard"><span class="i-label">${esc(l)}</span><span class="i-fig">${esc(f)}</span><span class="i-text">${esc(t)}</span></div>`).join('');
+  }
+  async function computeInsights() {
     const ds = S.race.drivers;
     const tabs = {};
     await Promise.all(ds.map((d) => table(d.code).then((t) => (tabs[d.code] = t)).catch(() => {})));
@@ -887,7 +1037,7 @@
     const winner = ds.slice().sort((a, b) => a.finish - b.finish)[0];
     const ver = driver('VER') || winner, vt = tabs[ver.code];
     const cards = [];
-    cards.push(['Pit stop', S.race.pit_loss_s.toFixed(1) + ' s', `A stop costs ${S.race.pit_loss_s.toFixed(1)} s at Zandvoort, measured over ${stops} stops.`]);
+    cards.push(['Pit stop', S.race.pit_loss_s.toFixed(1) + ' s', `A stop costs ${S.race.pit_loss_s.toFixed(1)} s at Zandvoort, measured over ${stops} stops.`, `per stop, measured over ${stops} stops`]);
     const deg = (vt && vt.deg_note) || 'Pace lost after 20 laps: Soft +1.1 s, Medium +0.9 s, Hard +1.0 s';
     const degFig = (deg.match(/Medium\s*([+−-]?\d+(\.\d+)?)/) || [])[1];
     cards.push(['Tyre wear', degFig ? (degFig.startsWith('+') ? degFig : '+' + degFig) + ' s' : '20 laps', deg.replace(/\.?$/, '.')]);
@@ -895,20 +1045,22 @@
       const os = vt.optimizer.stints, n = os.length - 1;
       const gap = ver.cum[N - 1] - winner.cum[N - 1];
       const plan = n === 1 ? `1 stop on lap ${os[0].end_lap}, ${cmp(os[0].compound).name} to ${cmp(os[1].compound).name}` : `${n} stops (${E.stintsLabel(os)})`;
-      cards.push([`Best plan for ${ver.name.split(' ')[0]}`, fmtDelta(vt.optimizer.delta_vs_real), `${plan}, ${Math.abs(vt.optimizer.delta_vs_real).toFixed(2)} s faster. ${ver.code === winner.code ? '' : `No strategy beats ${nameOf(winner.code)} (${gap.toFixed(1)} s ahead).`}`]);
+      cards.push([`Best plan for ${ver.name.split(' ')[0]}`, fmtDelta(vt.optimizer.delta_vs_real), `${plan}, ${Math.abs(vt.optimizer.delta_vs_real).toFixed(2)} s faster. ${ver.code === winner.code ? '' : `No strategy beats ${nameOf(winner.code)} (${gap.toFixed(1)} s ahead).`}`, `1 stop, lap ${os[0].end_lap}. ${ver.code === winner.code ? '' : nameOf(winner.code) + ' still wins.'}`]);
     }
     const left = ds.filter((d) => tabs[d.code] && tabs[d.code].optimizer && E.ok(tabs[d.code].optimizer.delta_vs_real))
       .map((d) => ({ code: d.code, x: -tabs[d.code].optimizer.delta_vs_real })).sort((a, b) => b.x - a.x).slice(0, 3);
-    if (left.length) cards.push(['Time left on the table', left[0].x.toFixed(1) + ' s', 'Biggest gaps to the best strategy: ' + left.map((l) => `${nameOf(l.code)} ${l.x.toFixed(1)} s`).join(', ') + '.']);
+    if (left.length) cards.push(['Time left on the table', left[0].x.toFixed(1) + ' s', 'Biggest gaps to the best strategy: ' + left.map((l) => `${nameOf(l.code)} ${l.x.toFixed(1)} s`).join(', ') + '.', `${nameOf(left[0].code)}'s pit wall; ` + left.slice(1).map((l) => `${nameOf(l.code)} ${l.x.toFixed(1)} s`).join(', ')]);
     const jv = ds.filter((d) => tabs[d.code] && tabs[d.code].jev && tabs[d.code].jev.stints && tabs[d.code].jev.stints.length);
     if (jv.length) {
       const near = jv.filter((d) => Math.abs(tabs[d.code].jev.stints[0].end_lap - d.stints[0].end_lap) <= 3).length;
       const beats = jv.filter((d) => tabs[d.code].jev.delta_vs_real < 0).length;
-      cards.push(['Jev vs the real teams', `${beats} of ${jv.length}`, `Jev's strategy beats the real one for ${beats} of ${jv.length} drivers. Its first stop lands within 3 laps of the real team for ${near} of ${jv.length}.`]);
+      cards.push(['Jev vs the real teams', `${beats} of ${jv.length}`, `Jev's strategy beats the real one for ${beats} of ${jv.length} drivers. Its first stop lands within 3 laps of the real team for ${near} of ${jv.length}.`, `drivers where Jev beats the real strategy`]);
     }
     cards.push(['Data trap', 'Pit flags', 'The source pit flags are always false, so stops are derived from tyre-age resets.']);
     cards.push(['Why not 2023', 'Wet race', '2023 was wet: on a drying track slick lap times improve with tyre age, so 2023 is left out of the model.']);
-    el.innerHTML = cards.map(([l, f, t]) => `<div class="icard"><span class="i-label">${esc(l)}</span><span class="i-fig">${esc(f)}</span><span class="i-text">${esc(t)}</span></div>`).join('');
+    const vc = validationCard(await loadValidation());
+    if (vc) cards.splice(1, 0, vc);
+    return cards;
   }
 
   // ---------- self test ----------
@@ -940,6 +1092,8 @@
       b.addEventListener('mouseenter', () => serve(b.dataset.c, false));
     });
     $('#btn-cancel-box').addEventListener('click', cancelBox);
+    $$('.phone-box button').forEach((b) => b.addEventListener('click', () => phoneBox(b.dataset.c)));
+    $('#toast-undo').addEventListener('click', () => { cancelBox(); $('#toast').hidden = true; $$('.phone-box button').forEach((b) => b.classList.remove('on')); });
     $('#btn-jev-take').addEventListener('click', (e) => chooseCompound(e.currentTarget.dataset.c));
     $$('.speed button').forEach((b) => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
     $('#btn-voice').addEventListener('click', () => { S.voice = !S.voice && 'speechSynthesis' in window; lsSet('boxbox.voice', S.voice ? '1' : '0'); if (!S.voice) try { speechSynthesis.cancel(); } catch (e) { /* */ } renderVoice(); });
@@ -967,6 +1121,7 @@
       if (k === 'b') { e.preventDefault(); boxPress(); }
       else if (S.boxArmed && (k === 's' || k === 'm' || k === 'h')) { e.preventDefault(); chooseCompound({ s: 'SOFT', m: 'MEDIUM', h: 'HARD' }[k]); }
       else if (k === 'escape') { S.boxArmed = false; renderBox(); }
+      else if (S.roomMode) return;
       else if (k === ' ') { e.preventDefault(); setSpeed(S.speed > 0 ? 0 : 1); }
       else if (k === '1') setSpeed(0.5); else if (k === '2') setSpeed(1); else if (k === '3') setSpeed(2); else if (k === '4') setSpeed(4);
     });
