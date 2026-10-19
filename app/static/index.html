@@ -6,7 +6,11 @@
 <title>BoxBox: Beat the Pit Wall</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="landing.css">
+<link rel="stylesheet" href="race.css">
+<link rel="stylesheet" href="finish.css">
 </head>
 <body>
 <main id="app">
@@ -23,9 +27,16 @@
     <div class="start-main">
       <div class="hero">
         <svg id="hero-track" class="hero-track" viewBox="0 0 1000 1000" aria-hidden="true"></svg>
-        <h1 class="hook">Max lost his home race.<br>Can you do better?</h1>
-        <p class="lede">You are the strategist. Laps tick by; press BOX and pick a tyre. Race the real team, our optimizer and Jev, then put your run on the leaderboard.</p>
+        <div class="eyebrow"><span class="live-dot"></span>Real data &middot; 2024 Dutch GP &middot; Zandvoort</div>
+        <h1 class="hook"><span class="h1">Max lost his home race.</span><span class="h2">Can you do better?</span></h1>
+        <p class="lede">You are the pit wall. Call the stops. Beat the real team.</p>
+        <div class="cta-row">
+          <button id="cta-start" class="cta-main" type="button"><span>Start the race</span></button>
+          <button id="cta-trailer" class="cta-ghost" type="button" hidden>&#9654; Watch the trailer</button>
+          <button class="cta-link btn-howto" type="button">How it works</button>
+        </div>
       </div>
+      <h2 class="sec-title">Pick your strategist</h2>
       <div id="driver-grid" class="driver-grid"></div>
       <div id="start-tiles" class="start-tiles"></div>
     </div>
@@ -294,6 +305,8 @@
 
 <div id="toast" class="toast" hidden><span id="toast-text"></span><button id="toast-undo" class="btn-quiet">Undo</button></div>
 </main>
+<script src="fx.js" defer></script>
+<script src="trailer.js" defer></script>
 <script src="js/engine.js"></script>
 <script src="mock/mock.js"></script>
 <script src="app.js"></script>
