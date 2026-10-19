@@ -88,7 +88,9 @@
 
 /* stat tiles */
 .start-tiles { grid-area: tiles; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-top: clamp(20px, 5vh, 70px); }
-.stile { background: linear-gradient(160deg, #1b1b2b, #10101a); border: 1px solid rgba(255,255,255,.1); border-top: 4px solid var(--hot); padding: 22px 24px; }
+.start-tiles { padding: 26px; border-radius: 20px; background: linear-gradient(90deg, rgba(7,7,13,.86), rgba(7,7,13,.55)), url(img/tyre.jpg) center / cover no-repeat; border: 1px solid rgba(255,255,255,.1); }
+.start-side > .panel:last-child { background: linear-gradient(180deg, rgba(7,7,13,.8), rgba(7,7,13,.92)), url(img/pitwall.jpg) center / cover no-repeat; border: 1px solid rgba(255,255,255,.1); }
+.stile { background: linear-gradient(160deg, #1b1b2b, #10101a); border: 1px solid rgba(255,255,255,.1); border-top: 4px solid var(--hot); padding: 22px 24px; backdrop-filter: blur(6px); }
 .stile .s-fig { font: italic 900 clamp(52px, 5vw, 84px)/1 var(--display); color: var(--gold); }
 .stile .s-text { font-size: 20px; color: var(--muted); }
 

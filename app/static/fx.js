@@ -148,7 +148,11 @@
       sync();
     }
     const tr = $('#cta-trailer');
-    if (tr && window.BoxBoxTrailer) { tr.hidden = false; tr.addEventListener('click', () => { ctx(); window.BoxBoxTrailer.play(); }); }
+    if (tr) {
+      tr.addEventListener('click', () => { ctx(); if (window.BoxBoxTrailer) window.BoxBoxTrailer.play(); });
+      const reveal = () => { if (window.BoxBoxTrailer) tr.hidden = false; };
+      reveal(); window.addEventListener('load', reveal);
+    }
 
     // cars on the track (the track is drawn by app.js after the data loads)
     const hero = $('#hero-track');
