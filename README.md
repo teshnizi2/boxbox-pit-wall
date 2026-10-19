@@ -43,7 +43,7 @@ The counterfactual is fair to reality. Your car's time is its real race time plu
 ## What the data says
 
 - A pit stop costs 24.0 s at Zandvoort 2024 (in-lap plus out-lap versus clean pace, over 26 stops).
-- The source pit flags are always false, so stops are derived from tyre-age resets.
+- The source pit flags are always false, so stops are derived from tyre-age resets. All 26 derived stops match the organisers' shared Hopsworks feature group `f1_pit_stops` (driver and lap), whose median pit-lane time is 21.2 s.
 - The model finds the best 1-stop at lap 29, Medium to Hard. The real teams stopped on laps 27 to 30. Verstappen's best possible strategy gains only 0.15 s, so no strategy beats Norris.
 - Most time left on the table: Albon 14.6 s, Tsunoda 12.6 s, Bottas 11.9 s, Russell 9.7 s.
 - Jev's first stop lands within 3 laps of the real team for 8 of 20 drivers, and its strategy beats the real one for 10 of 20.
@@ -68,6 +68,7 @@ Needs Python 3.12, an Elastic Serverless project, a Hopsworks project and a Type
    11. `elastic_setup.py`
    12. `deploy_model.py`
    13. `pitcall.py --register`
+   14. `validate_shared.py`
 3. Start the server with `uvicorn server:app --port 8000`, then open http://localhost:8000. Controls: B then S/M/H to box, Space to pause, 1 to 4 to change speed.
 
 `app/CONTRACT.md` describes the data files, the game math and the API.

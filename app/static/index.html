@@ -21,9 +21,13 @@
   </header>
   <div class="start-body">
     <div class="start-main">
-      <h1 class="hook">Max lost his home race. Can you do better?</h1>
-      <p class="lede">You are the strategist. Laps tick by; press BOX and pick a tyre. Race the real team, our optimizer and Jev, then put your run on the leaderboard.</p>
+      <div class="hero">
+        <svg id="hero-track" class="hero-track" viewBox="0 0 1000 1000" aria-hidden="true"></svg>
+        <h1 class="hook">Max lost his home race.<br>Can you do better?</h1>
+        <p class="lede">You are the strategist. Laps tick by; press BOX and pick a tyre. Race the real team, our optimizer and Jev, then put your run on the leaderboard.</p>
+      </div>
       <div id="driver-grid" class="driver-grid"></div>
+      <div id="start-tiles" class="start-tiles"></div>
     </div>
     <aside class="start-side">
       <div class="panel">
@@ -94,6 +98,7 @@
         <div class="panel-title">Jev <span class="meta">TypeSafe System One</span></div>
         <div class="jev-call" id="jev-call" data-call="none">Watching</div>
         <div class="meter"><span class="m-label">Box probability</span><span class="m-val num" id="jev-pbox-val">—</span><div class="m-bar"><div class="m-fill" id="jev-pbox-fill"></div></div></div>
+        <div class="meter team"><span class="m-label" title="boxbox_pitcall v2, Hopsworks Model Registry">Real-team instinct</span><span class="m-val num" id="team-pbox-val">—</span><div class="m-bar"><div class="m-fill" id="team-pbox-fill"></div></div></div>
         <div class="meter"><span class="m-label">Cliff risk</span><span class="m-val num" id="jev-cliff-val">—</span><div class="m-bar"><div class="m-fill" id="jev-cliff-fill"></div></div></div>
         <div class="meter"><span class="m-label">Undercut threat</span><span class="m-val num" id="jev-under-val">—</span><div class="m-bar"><div class="m-fill" id="jev-under-fill"></div></div></div>
         <div class="jev-state">
@@ -217,12 +222,14 @@
       <!-- B: Hopsworks -->
       <rect class="a-box" x="560" y="48" width="480" height="340" rx="10"/>
       <text class="a-h" x="590" y="104">Hopsworks feature store</text>
-      <text class="a-t" x="590" y="150">FG lap_features · <tspan class="a-num">2,769 laps</tspan></text>
-      <text class="a-t" x="590" y="186">FG driver_style · vector index</text>
-      <text class="a-t" x="590" y="222">FG jev_pitwall_calls</text>
-      <text class="a-t" x="590" y="258">Feature View laptime_fv</text>
-      <text class="a-t" x="590" y="294">Model Registry boxbox_laptime v1</text>
-      <text class="a-t a-hi" x="590" y="342">MAE 0.47 s on held-out stints</text>
+      <text class="a-t a-tight" x="590" y="146">FG lap_features · <tspan class="a-num">2,769 laps</tspan></text>
+      <text class="a-t a-tight" x="590" y="178">FG driver_style · vector index</text>
+      <text class="a-t a-tight" x="590" y="210">FG jev_pitwall_calls</text>
+      <text class="a-t a-tight" x="590" y="242">Feature View laptime_fv</text>
+      <text class="a-t a-tight" x="590" y="274">Model Registry boxbox_laptime v1</text>
+      <text class="a-t a-tight a-hi" x="590" y="306">MAE 0.47 s on held-out stints</text>
+      <text class="a-t a-tight" x="590" y="350">Model 2: boxbox_pitcall</text>
+      <text class="a-t a-tight a-hi" x="886" y="350">AUC 0.90</text>
       <!-- B -> C -->
       <line class="a-ln" x1="1044" y1="218" x2="1122" y2="218" marker-end="url(#ah)"/>
       <text class="a-lbl" x="1085" y="204" text-anchor="middle">model</text>

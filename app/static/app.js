@@ -255,6 +255,8 @@
     updateRaceUI();
     radio('start', { grid: S.rd.grid, compound: S.dt.start.compound });
     askJev(1);
+    teamState.lastLap = 0; teamState.p = null; renderTeam();
+    askTeam(1);
     $('#serve-line').textContent = '';
     serveState.last = '';
     roomPost();
@@ -386,6 +388,7 @@
     if (a > cl && !S.cliffWarned[key]) { S.cliffWarned[key] = true; radio('cliff', { compound: c, age: a, cliff: cl }); }
     if (cur === S.N && !S.finalSent) { S.finalSent = true; radio('final_lap', { position: towerNow().you }); }
     askJev(cur);
+    askTeam(cur);
   }
 
   function boxPress() {
@@ -658,6 +661,24 @@
       S.jev.data = Object.assign({ lap: body.lap, gain: body.gain_if_box }, res);
       renderJev();
     } finally { S.jev.inflight = false; }
+  }
+  // Model 2 (Hopsworks Model Registry, boxbox_pitcall): how likely a real F1 team boxes this lap.
+  const teamState = { inflight: false, lastLap: 0, p: null };
+  async function askTeam(lap) {
+    if (S.mock || teamState.inflight || teamState.lastLap >= lap || S.screen !== 'race') return;
+    teamState.inflight = true; teamState.lastLap = lap;
+    const cur = curLap(), c = S.plan.comp[cur], a = S.plan.age[cur];
+    const stint_no = S.stints.findIndex((s) => cur >= s.start_lap && cur <= s.end_lap) + 1;
+    try {
+      const res = await fetchJSON('/api/teamcall', { method: 'POST', body: JSON.stringify({ driver: S.code, lap: cur, compound: c, age: a, stint_no, position: towerNow().you }) }, 4000);
+      if (res && E.ok(res.p_team_box)) { teamState.p = res.p_team_box; renderTeam(); }
+    } catch (e) { /* optional model; keep the last value */ }
+    finally { teamState.inflight = false; }
+  }
+  function renderTeam() {
+    const v = teamState.p;
+    $('#team-pbox-val').textContent = E.ok(v) ? (v < 0.1 ? (v * 100).toFixed(1) : Math.round(v * 100)) + '%' : '—';
+    $('#team-pbox-fill').style.width = (E.ok(v) ? E.clamp(v, 0, 1) * 100 : 0) + '%';
   }
   function renderJev() {
     const j = S.jev.data;
