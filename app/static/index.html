@@ -29,12 +29,20 @@
         <svg id="hero-track" class="hero-track" viewBox="0 0 1000 1000" aria-hidden="true"></svg>
         <div class="eyebrow"><span class="live-dot"></span>Real data &middot; 2024 Dutch GP &middot; Zandvoort</div>
         <h1 class="hook"><span class="h1">Max lost his home race.</span><span class="h2">Can you do better?</span></h1>
-        <p class="lede">You are the pit wall. Call the stops. Beat the real team.</p>
+        <p class="lede">You are the pit wall. Pick a driver, press Start, then press BOX when you want a pit stop. Finish ahead of the real team.</p>
         <div class="cta-row">
           <button id="cta-start" class="cta-main" type="button"><span>Start the race</span></button>
           <button id="cta-trailer" class="cta-ghost" type="button" hidden>&#9654; Watch the trailer</button>
           <button class="cta-link btn-howto" type="button">How it works</button>
         </div>
+        <section class="howplay" aria-label="How to play">
+                <h3 class="hp-title">How to play</h3>
+                <ol class="hp-steps">
+                  <li><b>1</b><div><strong>Pick a driver</strong><span>You are his pit wall. Your job: decide when he stops for new tyres.</span></div></li>
+                  <li><b>2</b><div><strong>Press Start the race</strong><span>The real race replays lap by lap. Every lap our AI (Jev) says BOX or STAY OUT.</span></div></li>
+                  <li><b>3</b><div><strong>Press BOX, pick a tyre</strong><span>Old tyres get slow. Use at least two different tyres. Finish ahead of the real team to win.</span></div></li>
+                </ol>
+              </section>
       </div>
       <h2 class="sec-title">Pick your strategist</h2>
       <div id="driver-grid" class="driver-grid"></div>
@@ -47,7 +55,7 @@
         <div class="picked">Strategist for <span id="picked-driver">Max Verstappen</span></div>
         <div class="twin" id="twin" hidden></div>
         <button id="btn-start" class="btn-primary">Start race</button>
-        <p class="keys">B to box, then S, M or H. Space pauses. 1 to 4 set the speed. H here opens How it works.</p>
+        <p class="keys">During the race: press B (or the BOX button) to pit, then S, M or H for Soft, Medium or Hard tyres. Space pauses.</p>
       </div>
       <p class="keys">Code: <a class="repo-link" href="https://github.com/teshnizi2/boxbox-pit-wall" target="_blank" rel="noopener">github.com/teshnizi2/boxbox-pit-wall</a></p>
       <div class="panel">
@@ -107,7 +115,7 @@
           <button data-c="MEDIUM" style="--c:#f5c518"><span class="cp-l">M</span>Medium</button>
           <button data-c="HARD" style="--c:#f2f2f2"><span class="cp-l">H</span>Hard</button>
         </div>
-        <div class="box-note" id="box-note">Press B to box.</div>
+        <div class="box-note" id="box-note">Want a pit stop? Press BOX, then pick a tyre.</div>
         <div class="serve-line num" id="serve-line"></div>
         <button id="btn-cancel-box" class="btn-quiet" hidden>Cancel the stop</button>
       </div>
@@ -226,6 +234,13 @@
     <button id="btn-howto-close" class="btn-quiet">Close</button>
   </header>
   <div class="ov-body">
+    <div class="hw-story">
+      <article class="hw-card" style="--img:url(img/shot-race.jpg)"><div class="hw-n">1</div><h3>The data lives in Elastic</h3><p>Every lap of the real 2024 Dutch Grand Prix is stored here: 2.9 million measurements and 3,531 laps. Think of it as a library with all the race books.</p><small>Elastic Serverless · ES|QL</small></article>
+      <article class="hw-card" style="--img:url(img/tyre.jpg)"><div class="hw-n">2</div><h3>Hopsworks turns it into numbers and models</h3><p>It works out how fast tyres wear and that a pit stop costs 24 seconds. Two small models learn from this: one guesses lap times (only 0.47 s off), one guesses &ldquo;should he pit now?&rdquo; (90% right).</p><small>Feature store · lap_features · AUC 0.90</small></article>
+      <article class="hw-card" style="--img:url(img/pitwall.jpg)"><div class="hw-n">3</div><h3>Jev gives advice every lap</h3><p>Jev is an AI co-pilot. Each lap it says BOX or STAY OUT and how sure it is, like a percentage on a radio call.</p><small>TypeSafe Jev · about 0.4 s</small></article>
+      <article class="hw-card" style="--img:url(img/hero.jpg)"><div class="hw-n">4</div><h3>Claude writes the radio</h3><p>Claude writes the team radio messages and the debrief after the race, using the data in Elastic. The game puts it all together and replays the race lap by lap.</p><small>Claude via Elastic · Agent Builder · Kibana</small></article>
+    </div>
+    <details class="hw-tech"><summary>Show the technical diagram</summary>
     <svg class="arch" viewBox="0 0 1600 800" role="img" aria-label="Architecture: Elastic telemetry to Hopsworks feature store to the game in the browser, with TypeSafe Jev, Claude via ES|QL COMPLETION, Agent Builder, Kibana and the leaderboard index">
       <defs>
         <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c9cad0"/></marker>
@@ -297,6 +312,7 @@
       <text class="a-lbl" x="870" y="420" text-anchor="middle">/api: radio, debrief, ask, runs</text>
       <text class="a-lbl" x="1366" y="434">/api/jev</text>
     </svg>
+    </details>
     <h3 class="ov-sub">What the data says</h3>
     <div id="insights" class="insights"></div>
     <p class="ov-foot">Built today at the Elastic x Hopsworks hack night. Code: <a class="repo-link" href="https://github.com/teshnizi2/boxbox-pit-wall" target="_blank" rel="noopener">github.com/teshnizi2/boxbox-pit-wall</a></p>
