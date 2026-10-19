@@ -21,7 +21,8 @@ Hopsworks Feature Store
   FG driver_style      driving fingerprints from telemetry, with a vector index ("style twin" search)
   FG jev_pitwall_calls Jev's typed judgments per lap, stored as reusable features
   Feature View laptime_fv -> model boxbox_laptime (Model Registry, MAE 0.47 s on held-out stints)
-  Deployment boxboxlaptime (Hopsworks model serving)
+  Deployment boxboxlaptime (Hopsworks model serving, called live by the game)
+  Feature View pitcall_fv (lap_features JOIN driver_style) -> model boxbox_pitcall v2: "would a real team box now?" (AUC 0.90, base rate 3.8%)
   |
   v
 strategy.py: per-driver lap-time tables, optimizer, Jev ghost strategies, backtest
@@ -33,6 +34,8 @@ server.py (FastAPI) + app/static (game UI, vanilla JS)
   /api/debrief   post-race debrief, same path
   /api/ask       Elastic Agent Builder agent "BoxBox Pit Wall" with custom ES|QL tools
   /api/runs      leaderboard in Elastic (boxbox-runs), shown on the Kibana dashboard "BoxBox Live"
+  /api/serve     live prediction from the Hopsworks deployment
+  /api/teamcall  real-team instinct from boxbox_pitcall
 ```
 
 The counterfactual is fair to reality. Your car's time is its real race time plus (model time of your strategy minus model time of the real strategy). Traffic, mistakes and noise stay as they were, and only the strategy changes. A dry race must use two compounds, otherwise you are disqualified.
@@ -64,6 +67,7 @@ Needs Python 3.12, an Elastic Serverless project, a Hopsworks project and a Type
    10. `push_predictions.py`
    11. `elastic_setup.py`
    12. `deploy_model.py`
+   13. `pitcall.py --register`
 3. Start the server with `uvicorn server:app --port 8000`, then open http://localhost:8000. Controls: B then S/M/H to box, Space to pause, 1 to 4 to change speed.
 
 `app/CONTRACT.md` describes the data files, the game math and the API.

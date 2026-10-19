@@ -131,6 +131,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .compound-pick button { height: 64px; background: var(--raised); border: 2px solid var(--c); border-radius: 10px; font-size: 17px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .cp-l { width: 30px; height: 30px; border-radius: 50%; background: var(--c); color: #111; display: grid; place-items: center; font-weight: 800; }
 .box-note { color: var(--muted); font-size: 15px; min-height: 21px; }
+.serve-line { color: var(--faint); font-size: 13px; line-height: 1.35; }
+.serve-line:empty { display: none; }
+.repo-link { color: var(--muted); font-size: 14px; text-decoration: none; border-bottom: 1px solid var(--control); }
+.repo-link:hover { color: var(--text); }
+.ov-foot { margin-top: 20px; color: var(--faint); font-size: 15px; }
 #btn-cancel-box { align-self: flex-start; }
 
 .jev-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
@@ -212,6 +217,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ask-answer p { margin: 0 0 10px; font-size: 16px; line-height: 1.5; }
 .ask-answer summary { color: var(--muted); cursor: pointer; font-size: 15px; }
 .ask-answer pre { white-space: pre-wrap; word-break: break-word; background: var(--ground); border-radius: 4px; padding: 8px 10px; font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+
+/* room big screen */
+.room-grid { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 520px; grid-template-rows: minmax(0, 1fr); gap: var(--gap); padding: var(--gap); }
+.room-list { overflow: hidden; display: flex; flex-direction: column; }
+.rrow { display: grid; grid-template-columns: minmax(0, 1fr) 70px 54px 54px 92px; gap: 10px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--rule); font-size: 20px; }
+.rrow.rhead { color: var(--faint); font-size: 14px; padding: 4px; border-bottom: 1px solid var(--border); }
+.rrow .num { text-align: right; }
+.r-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r-name small { display: block; font-weight: 400; color: var(--faint); font-size: 14px; font-family: var(--mono); }
+.r-drv { display: flex; align-items: center; gap: 8px; }
+.r-drv i { width: 5px; height: 22px; border-radius: 2px; background: var(--team); }
 
 /* how it works */
 .overlay { position: fixed; inset: 0; z-index: 50; background: var(--ground); overflow-y: auto; display: flex; flex-direction: column; }

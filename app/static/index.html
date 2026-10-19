@@ -32,8 +32,9 @@
         <div class="picked">Strategist for <span id="picked-driver">Max Verstappen</span></div>
         <div class="twin" id="twin" hidden></div>
         <button id="btn-start" class="btn-primary">Start race</button>
-        <p class="keys">B to box, then S, M or H. Space pauses. 1 to 4 set the speed.</p>
+        <p class="keys">B to box, then S, M or H. Space pauses. 1 to 4 set the speed. H here opens How it works.</p>
       </div>
+      <p class="keys">Code: <a class="repo-link" href="https://github.com/teshnizi2/boxbox-pit-wall" target="_blank" rel="noopener">github.com/teshnizi2/boxbox-pit-wall</a></p>
       <div class="panel">
         <div class="panel-title">Race ghosts <span class="meta">up to 3 from the leaderboard</span></div>
         <div id="ghost-pick" class="ghost-pick"><p class="empty">Loading the leaderboard…</p></div>
@@ -86,6 +87,7 @@
           <button data-c="HARD" style="--c:#f2f2f2"><span class="cp-l">H</span>Hard</button>
         </div>
         <div class="box-note" id="box-note">Press B to box.</div>
+        <div class="serve-line num" id="serve-line"></div>
         <button id="btn-cancel-box" class="btn-quiet" hidden>Cancel the stop</button>
       </div>
       <div class="panel jev-panel">
@@ -166,6 +168,24 @@
   </div>
 </section>
 
+<section id="screen-room" class="screen race" hidden>
+  <header class="topbar">
+    <div class="brand"><span class="mark">BoxBox</span><span class="brand-sub">Room <span id="room-name"></span></span></div>
+    <div class="tb-item"><span class="tb-label">Players</span><span class="tb-big num" id="room-count">0</span></div>
+    <div class="tb-event" id="room-join"></div>
+    <div class="spacer"></div>
+    <div class="status" data-state="unknown">Connecting</div>
+  </header>
+  <div class="room-grid">
+    <div class="panel map-panel room-map-panel"><canvas id="room-map" aria-label="Track map with every player in the room"></canvas></div>
+    <div class="panel room-list">
+      <div class="panel-title">Live strategies <span class="meta" id="room-updated"></span></div>
+      <div class="rrow rhead"><span>Player</span><span>Driver</span><span class="num">Lap</span><span class="num">Pos</span><span class="num">Vs real</span></div>
+      <div id="room-rows"></div>
+    </div>
+  </div>
+</section>
+
 <section id="howto" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="howto-title">
   <header class="topbar">
     <div class="brand"><span class="mark">BoxBox</span></div>
@@ -226,12 +246,16 @@
         <text class="a-t a-tb" x="590" y="578">Kibana</text><text class="a-t" x="590" y="614">dashboard</text><text class="a-t" x="590" y="646">"BoxBox Live"</text><text class="a-s" x="590" y="700">Runs and calls</text><text class="a-s" x="590" y="730">as they happen</text></g>
       <g class="a-card"><rect x="830" y="534" width="240" height="226" rx="8"/>
         <text class="a-t a-tb" x="850" y="578">boxbox-runs</text><text class="a-t" x="850" y="614">leaderboard</text><text class="a-t" x="850" y="646">index</text><text class="a-s" x="850" y="700">Every saved run</text><text class="a-s" x="850" y="730">becomes a ghost</text></g>
-      <rect class="a-box" x="1130" y="470" width="440" height="310" rx="10"/>
-      <text class="a-h" x="1160" y="526">TypeSafe Jev</text>
-      <text class="a-t" x="1160" y="570">System One model</text>
-      <text class="a-t" x="1160" y="616">Typed call: BOX or STAY OUT</text>
-      <text class="a-t" x="1160" y="656">plus a probability</text>
-      <text class="a-t a-hi" x="1160" y="716">about 0.4 s per lap</text>
+      <rect class="a-box" x="1130" y="470" width="440" height="150" rx="10"/>
+      <text class="a-h a-h2" x="1156" y="512">TypeSafe Jev</text>
+      <text class="a-t" x="1156" y="552">Typed call: BOX or STAY OUT</text>
+      <text class="a-t a-hi" x="1156" y="592">+ probability, about 0.4 s</text>
+      <rect class="a-box" x="1130" y="636" width="440" height="144" rx="10"/>
+      <text class="a-h a-h2" x="1156" y="678">Hopsworks model serving</text>
+      <text class="a-t" x="1156" y="718">boxboxlaptime on KServe</text>
+      <text class="a-t a-hi" x="1156" y="758">next 5 laps in ~30 ms</text>
+      <path class="a-ln a-ln-o" d="M1574,300 L1592,300 L1592,708 L1578,708" fill="none" marker-end="url(#ah-o)"/>
+      <text class="a-lbl" x="1580" y="440" text-anchor="end">/api/serve</text>
       <!-- links from the game -->
       <line class="a-ln a-ln-o" x1="1350" y1="392" x2="1350" y2="462" marker-start="url(#ah-o)" marker-end="url(#ah-o)"/>
       <path class="a-ln a-ln-o" d="M1180,392 L1180,430 L560,430 L560,462" fill="none" marker-start="url(#ah-o)" marker-end="url(#ah-o)"/>
@@ -240,6 +264,7 @@
     </svg>
     <h3 class="ov-sub">What the data says</h3>
     <div id="insights" class="insights"></div>
+    <p class="ov-foot">Built today at the Elastic x Hopsworks hack night. Code: <a class="repo-link" href="https://github.com/teshnizi2/boxbox-pit-wall" target="_blank" rel="noopener">github.com/teshnizi2/boxbox-pit-wall</a></p>
   </div>
 </section>
 

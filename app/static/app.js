@@ -27,6 +27,7 @@
     rd: null, dt: null, realPlans: {}, ghosts: [], cliffWarned: {}, finalSent: false,
     jev: { inflight: false, lastLap: 0, data: null, src: '' },
     voice: true, audio: null, result: null, convId: null,
+    room: (qs.get('room') || '').trim().slice(0, 40) || null, bigScreen: qs.get('screen') === '1',
   };
 
   const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } };
@@ -218,8 +219,8 @@
   // ---------- race ----------
   function show(screen) {
     S.screen = screen;
-    ['start', 'race', 'finish'].forEach((s) => ($('#screen-' + s).hidden = s !== screen));
-    if (screen === 'race') requestAnimationFrame(resizeMap);
+    ['start', 'race', 'finish', 'room'].forEach((s) => ($('#screen-' + s).hidden = s !== screen));
+    if (screen === 'race' || screen === 'room') requestAnimationFrame(resizeMap);
   }
   async function startRace(ghosts) {
     initAudio();
@@ -254,6 +255,9 @@
     updateRaceUI();
     radio('start', { grid: S.rd.grid, compound: S.dt.start.compound });
     askJev(1);
+    $('#serve-line').textContent = '';
+    serveState.last = '';
+    roomPost();
   }
   function recompute() {
     S.stints = E.stintsFromPits(S.dt.start, S.pits, S.N);
@@ -286,14 +290,97 @@
         for (let L = prev + 1; L <= done; L++) onLap(L);
       }
       drawMap();
-    }
+    } else if (S.screen === 'room') drawRoom(dtR);
     requestAnimationFrame(frame);
+  }
+
+  // ---------- multiplayer room ----------
+  // Player side: send our strategy on start, every BOX, every 5 laps and at the flag.
+  function roomPost() {
+    if (!S.room || S.mock || !S.rd) return;
+    const body = { player_name: S.name, driver: S.code, stints: S.stints, lap: Math.min(S.lapsDone, S.N) };
+    fetchJSON('/api/room/' + encodeURIComponent(S.room) + '/state', { method: 'POST', body: JSON.stringify(body) }, 4000).catch(() => {});
+  }
+  // Big screen: poll the room every second and draw every player with the ghost math.
+  const room = { players: [], cars: {}, last: 0, polling: false };
+  async function pollRoom() {
+    if (room.polling) return;
+    room.polling = true;
+    try {
+      const res = await fetchJSON('/api/room/' + encodeURIComponent(S.room), { method: 'GET' }, 4000);
+      setNet('online');
+      const ps = (res && res.players) || [];
+      await Promise.all(Array.from(new Set(ps.map((p) => p.driver))).filter((c) => driver(c)).map(table));
+      room.players = ps.filter((p) => driver(p.driver) && Array.isArray(p.stints) && p.stints.length);
+      for (const p of room.players) {
+        const key = (p.player_name || '') + '|' + p.driver;
+        const sig = JSON.stringify(p.stints);
+        let car = room.cars[key];
+        if (!car || car.sig !== sig) {
+          const rd = driver(p.driver), dt = S.tables[p.driver];
+          const cum = E.carCum(rd, dt, p.stints, S.race.pit_loss_s);
+          car = Object.assign(car || { T: 0 }, { sig, cum, rd, dt, name: p.player_name || 'Player', code: p.driver });
+          room.cars[key] = car;
+        }
+        car.lap = Math.max(0, Math.min(p.lap || 0, car.cum.length));
+        car.stints = p.stints;
+        car.seen = Date.now();
+      }
+      room.last = Date.now();
+      renderRoomList();
+    } catch (e) { setNet('offline'); }
+    finally { room.polling = false; }
+  }
+  function renderRoomList() {
+    const cars = Object.values(room.cars).filter((c) => Date.now() - c.seen < 15000);
+    const rows = cars.map((c) => {
+      const L = c.lap;
+      const pos = L > 0 ? E.posAt(S.race, c.code, c.cum[L - 1], L) : c.rd.grid;
+      const dl = L > 0 ? c.cum[L - 1] - c.rd.cum[L - 1] : 0;
+      return { c, L, pos, dl };
+    }).sort((a, b) => a.pos - b.pos || a.dl - b.dl);
+    $('#room-count').textContent = rows.length;
+    $('#room-updated').textContent = room.last ? 'updated ' + new Date(room.last).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+    $('#room-rows').innerHTML = rows.length ? rows.map((r) => `<div class="rrow" style="--team:${esc(r.c.rd.color)}">
+        <span class="r-name">${esc(r.c.name)}<small>${esc(E.stintsLabel(r.c.stints))}</small></span>
+        <span class="r-drv"><i></i>${esc(r.c.code)}</span><span class="num">${r.L}</span><span class="num">P${r.pos}</span><span class="num">${fmtDelta(r.dl)}</span></div>`).join('')
+      : '<p class="empty">Waiting for players. Open this game with ?room=' + esc(S.room) + ' on any laptop and press Start.</p>';
+  }
+  let roomTimer = 0;
+  function drawRoom(dtR) {
+    roomTimer += dtR;
+    if (roomTimer >= 1) { roomTimer = 0; pollRoom(); }
+    const c = map.ctx; if (!c) return;
+    c.clearRect(0, 0, map.w, map.h);
+    const P = S.race.track.path;
+    c.lineJoin = 'round'; c.lineCap = 'round';
+    c.beginPath(); P.forEach((p, i) => { const [x, y] = mx(p); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.closePath();
+    c.strokeStyle = '#2e2d33'; c.lineWidth = 22; c.stroke();
+    c.strokeStyle = '#46454c'; c.lineWidth = 2; c.stroke();
+    for (const car of Object.values(room.cars)) {
+      if (Date.now() - car.seen > 15000) continue;
+      // each player is drawn where they are in their own race, eased between polls
+      const target = car.lap > 0 ? car.cum[car.lap - 1] : 0;
+      car.T += (target - car.T) * Math.min(1, dtR * 2.5);
+      const [x, y] = mx(carPos(car.cum, car.T));
+      c.setLineDash([5, 4]); c.beginPath(); c.arc(x, y, 13, 0, Math.PI * 2); c.lineWidth = 3; c.strokeStyle = '#ffffff'; c.stroke(); c.setLineDash([]);
+      c.beginPath(); c.arc(x, y, 8, 0, Math.PI * 2); c.fillStyle = car.rd.color; c.fill();
+      label(c, x, y, `${car.name} · ${car.code}`, '#ffffff', true);
+    }
+  }
+  function startRoomScreen() {
+    $('#room-name').textContent = S.room;
+    $('#room-join').textContent = `Players join at ${location.origin}/?room=${S.room}`;
+    show('room');
+    renderRoomList();
+    pollRoom();
   }
 
   function onLap(L) {
     if (S.plan.pit[L]) feed(L, `Pit stop done: ${cmp(S.plan.comp[L + 1]).name} tyres fitted.`, 'pit');
-    if (L >= S.N) { S.running = false; updateRaceUI(); setTimeout(finishRace, 1200); return; }
+    if (L >= S.N) { S.running = false; updateRaceUI(); roomPost(); setTimeout(finishRace, 1200); return; }
     updateRaceUI();
+    if (L % 5 === 0) roomPost();
     const cur = L + 1, c = S.plan.comp[cur], a = S.plan.age[cur], cl = (S.dt.cliff || {})[c] || 35;
     const key = c + '@' + S.stints.findIndex((s) => cur >= s.start_lap && cur <= s.end_lap);
     if (a > cl && !S.cliffWarned[key]) { S.cliffWarned[key] = true; radio('cliff', { compound: c, age: a, cliff: cl }); }
@@ -316,6 +403,23 @@
     recompute();
     updateRaceUI();
     radio('box', { compound: c, lap: cur });
+    serve(c, true);
+    roomPost();
+  }
+  // Hopsworks model serving: the deployed lap-time model predicts the next 5 laps on a new set.
+  const serveState = { inflight: false, last: '' };
+  async function serve(c, force) {
+    if (S.screen !== 'race' || S.mock) return;
+    const cur = curLap();
+    const key = c + '@' + cur;
+    if (serveState.inflight || (!force && serveState.last === key)) return;
+    serveState.inflight = true; serveState.last = key;
+    try {
+      const res = await fetchJSON('/api/serve', { method: 'POST', body: JSON.stringify({ driver: S.code, lap: cur, compound: c, n: 5 }) }, 4000);
+      const ps = (res && res.predictions) || [];
+      if (ps.length) $('#serve-line').textContent = `Hopsworks serving: next ${ps.length} laps on new ${cmp(c).name}s ${ps.map((v) => (+v).toFixed(1)).join(' · ')} s (${Math.round(res.ms || 0)} ms)`;
+    } catch (e) { /* serving is optional; keep the last line */ }
+    finally { serveState.inflight = false; }
   }
   function cancelBox() {
     const cur = curLap();
@@ -324,6 +428,7 @@
     recompute();
     updateRaceUI();
     feed(cur, 'Box cancelled. Stay out.', 'pit');
+    roomPost();
   }
   function renderBox() {
     const cur = curLap(), planned = S.pits.find((p) => p.lap === cur);
@@ -422,7 +527,7 @@
   // ---------- track map ----------
   const map = { ctx: null, w: 0, h: 0, s: 1, ox: 0, oy: 0, path: null };
   function resizeMap() {
-    const cv = $('#map'); if (!cv) return;
+    const cv = S.screen === 'room' ? $('#room-map') : $('#map'); if (!cv) return;
     const box = cv.parentElement.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     cv.width = Math.max(10, Math.floor(box.width * dpr)); cv.height = Math.max(10, Math.floor(box.height * dpr));
@@ -809,7 +914,10 @@
   function bind() {
     $('#btn-start').addEventListener('click', () => startRace(S.ghostPick));
     $('#btn-box').addEventListener('click', boxPress);
-    $$('#compound-pick button').forEach((b) => b.addEventListener('click', () => chooseCompound(b.dataset.c)));
+    $$('#compound-pick button').forEach((b) => {
+      b.addEventListener('click', () => chooseCompound(b.dataset.c));
+      b.addEventListener('mouseenter', () => serve(b.dataset.c, false));
+    });
     $('#btn-cancel-box').addEventListener('click', cancelBox);
     $('#btn-jev-take').addEventListener('click', (e) => chooseCompound(e.currentTarget.dataset.c));
     $$('.speed button').forEach((b) => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
@@ -848,11 +956,12 @@
     $('#player-name').value = lsGet('boxbox.player_name', '');
     await loadRace();
     if (qs.get('driver') && driver(qs.get('driver').toUpperCase())) S.code = qs.get('driver').toUpperCase();
+    requestAnimationFrame(frame);
+    if (S.room && S.bigScreen) { startRoomScreen(); window.BoxBox = { S, room }; return; }
     renderStart();
     show('start');
     loadBoard();
     if (qs.get('howto') === '1') openHowto();
-    requestAnimationFrame(frame);
     window.BoxBox = { S, evaluate, startRace, finishRace, setSpeed, chooseCompound };
   }
   boot();
