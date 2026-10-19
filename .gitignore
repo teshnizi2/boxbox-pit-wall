@@ -1,0 +1,22 @@
+# organisers' clone (holds repo/.env with our keys) and local env
+repo/
+.venv/
+.env
+*.env
+# data and generated artifacts
+cache/
+model/
+app/static/data/
+__pycache__/
+*.log
+install.log
+# local tool state and third-party skill copy
+.claude/
+.taste-skill/
+CLAUDE.md
+# internal notes
+SETUP.md
+PLAN.md
+SCORECARD.md
+DEMO.md
+ELASTIC_NOTES.md

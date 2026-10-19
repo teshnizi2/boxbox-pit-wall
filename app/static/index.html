@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BoxBox: Beat the Pit Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main id="app">
+
+<section id="screen-start" class="screen start">
+  <header class="topbar">
+    <div class="brand"><span class="mark">BoxBox</span><span class="brand-sub">Beat the Pit Wall</span></div>
+    <div class="tb-event" id="event-line">2024 Dutch Grand Prix · Zandvoort · 72 laps</div>
+    <div class="spacer"></div>
+    <button class="btn-quiet btn-howto">How it works</button>
+    <div class="status" data-state="unknown">Connecting</div>
+  </header>
+  <div class="start-body">
+    <div class="start-main">
+      <h1 class="hook">Max lost his home race. Can you do better?</h1>
+      <p class="lede">You are the strategist. Laps tick by; press BOX and pick a tyre. Race the real team, our optimizer and Jev, then put your run on the leaderboard.</p>
+      <div id="driver-grid" class="driver-grid"></div>
+    </div>
+    <aside class="start-side">
+      <div class="panel">
+        <label class="field-label" for="player-name">Your name</label>
+        <input id="player-name" class="field" maxlength="24" placeholder="Name for the leaderboard" autocomplete="off">
+        <div class="picked">Strategist for <span id="picked-driver">Max Verstappen</span></div>
+        <div class="twin" id="twin" hidden></div>
+        <button id="btn-start" class="btn-primary">Start race</button>
+        <p class="keys">B to box, then S, M or H. Space pauses. 1 to 4 set the speed.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Race ghosts <span class="meta">up to 3 from the leaderboard</span></div>
+        <div id="ghost-pick" class="ghost-pick"><p class="empty">Loading the leaderboard…</p></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section id="screen-race" class="screen race" hidden>
+  <header class="topbar">
+    <div class="brand"><span class="mark">BoxBox</span></div>
+    <div class="tb-item"><span class="tb-label">Lap</span><span class="tb-big num"><span id="lap-now">1</span><span class="tb-of" id="lap-of">/72</span></span></div>
+    <div class="tb-item"><span class="tb-label">Position</span><span class="tb-big num" id="pos-now">P2</span><span class="tb-sub num" id="pos-real">Real team P2</span></div>
+    <div class="tb-item"><span class="tb-label">Vs real team</span><span class="tb-big num" id="delta-now" data-sign="even">±0.0 s</span></div>
+    <div class="spacer"></div>
+    <div class="speed" role="group" aria-label="Race speed">
+      <button data-speed="0">Pause</button><button data-speed="0.5">0.5×</button><button data-speed="1">1×</button><button data-speed="2">2×</button><button data-speed="4">4×</button>
+    </div>
+    <button id="btn-voice" class="btn-quiet">Voice on</button>
+    <button id="btn-quit" class="btn-quiet">Quit</button>
+    <div class="status" data-state="unknown">Connecting</div>
+  </header>
+  <div class="race-grid">
+    <div class="col-left">
+      <div class="panel map-panel"><canvas id="map" aria-label="Track map of Zandvoort with all cars"></canvas>
+        <div class="map-key"><span class="k-you">You</span><span class="k-real">Real team</span><span class="k-ghost">Ghost</span></div>
+      </div>
+      <div class="panel stints-panel">
+        <div class="stint-line"><span class="stint-who">You</span><div class="stint-track"><div class="stint-bar" id="stint-you"></div><span class="stint-cursor"></span></div><span class="stint-label num" id="stint-you-label"></span></div>
+        <div class="stint-line"><span class="stint-who">Real team</span><div class="stint-track"><div class="stint-bar" id="stint-real"></div><span class="stint-cursor"></span></div><span class="stint-label num" id="stint-real-label"></span></div>
+      </div>
+      <div class="panel radio-panel"><div class="panel-title">Team radio</div><ol id="radio-feed" class="radio-feed"></ol></div>
+    </div>
+    <div class="col-mid">
+      <div class="panel tyre-card">
+        <div class="tyre-top">
+          <span class="tyre-disc" id="tyre-disc">M</span>
+          <div class="tyre-id"><span class="tyre-name" id="tyre-name">Medium</span><span class="meta">Model pace <span class="num" id="tyre-pace">—</span></span></div>
+          <div class="tyre-age"><span class="tb-big num" id="tyre-age">1</span><span class="meta">laps old</span></div>
+        </div>
+        <div class="health"><div class="health-fill" id="tyre-health-fill" data-state="ok"></div></div>
+        <div class="tyre-cliff" id="tyre-cliff">Cliff in — laps</div>
+        <div class="tyre-rule" id="tyre-rule" data-state="warn"></div>
+      </div>
+      <div class="box-zone">
+        <button id="btn-box" class="btn-box">BOX</button>
+        <div id="compound-pick" class="compound-pick" hidden>
+          <button data-c="SOFT" style="--c:#ff4b55"><span class="cp-l">S</span>Soft</button>
+          <button data-c="MEDIUM" style="--c:#f5c518"><span class="cp-l">M</span>Medium</button>
+          <button data-c="HARD" style="--c:#f2f2f2"><span class="cp-l">H</span>Hard</button>
+        </div>
+        <div class="box-note" id="box-note">Press B to box.</div>
+        <button id="btn-cancel-box" class="btn-quiet" hidden>Cancel the stop</button>
+      </div>
+      <div class="panel jev-panel">
+        <div class="panel-title">Jev <span class="meta">TypeSafe System One</span></div>
+        <div class="jev-call" id="jev-call" data-call="none">Watching</div>
+        <div class="meter"><span class="m-label">Box probability</span><span class="m-val num" id="jev-pbox-val">—</span><div class="m-bar"><div class="m-fill" id="jev-pbox-fill"></div></div></div>
+        <div class="meter"><span class="m-label">Cliff risk</span><span class="m-val num" id="jev-cliff-val">—</span><div class="m-bar"><div class="m-fill" id="jev-cliff-fill"></div></div></div>
+        <div class="meter"><span class="m-label">Undercut threat</span><span class="m-val num" id="jev-under-val">—</span><div class="m-bar"><div class="m-fill" id="jev-under-fill"></div></div></div>
+        <div class="jev-state">
+          <div><span class="js-val num" id="jev-saved">—</span><span class="js-label" id="jev-saved-label">Box now</span></div>
+          <div><span class="js-val num" id="jev-lapscliff">—</span><span class="js-label">Laps to cliff</span></div>
+          <div><span class="js-val num" id="jev-wear">—</span><span class="js-label">Lost to wear</span></div>
+        </div>
+        <div class="jev-src meta" id="jev-src"></div>
+        <button id="btn-jev-take" class="btn-quiet" hidden>Take Jev's call</button>
+      </div>
+    </div>
+    <div class="col-right panel tower">
+      <div class="tower-head"><span class="panel-title">Timing</span><span class="meta" id="tower-lap">Starting grid</span></div>
+      <div class="trow thead"><span class="t-pos">P</span><span class="t-bar"></span><span class="t-code">Driver</span><span class="t-gap">Interval</span><span class="t-tyre">Tyre</span><span class="t-stops">Stops</span></div>
+      <div id="tower-rows" class="tower-rows"></div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-finish" class="screen finish" hidden>
+  <header class="topbar">
+    <div class="brand"><span class="mark">BoxBox</span></div>
+    <div class="tb-event">Chequered flag · 2024 Dutch Grand Prix</div>
+    <div class="spacer"></div>
+    <button id="btn-again" class="btn-quiet">Race again</button>
+    <button id="btn-change" class="btn-quiet">Change driver</button>
+    <button class="btn-quiet btn-howto">How it works</button>
+    <div class="status" data-state="unknown">Connecting</div>
+  </header>
+  <div class="finish-grid">
+    <div class="panel classif">
+      <div class="panel-title">Classification</div>
+      <div id="classif-rows" class="classif-rows"></div>
+    </div>
+    <div class="finish-mid">
+      <div class="panel result">
+        <div class="res-main"><span class="res-pos num" id="res-pos">P1</span>
+          <div class="res-text"><span class="res-driver" id="res-driver"></span><span class="res-sub" id="res-sub"></span></div>
+          <div class="res-delta-box"><span class="tb-label">Vs real team</span><span class="tb-big num" id="res-delta" data-sign="even">±0.0 s</span></div>
+        </div>
+      </div>
+      <div class="panel compare">
+        <div class="panel-title">You vs the pit walls</div>
+        <table class="cmp-table"><thead><tr><th>Pit wall</th><th>Strategy</th><th class="num">Finish</th><th class="num">Vs real</th></tr></thead><tbody id="compare-rows"></tbody></table>
+      </div>
+      <div class="panel debrief"><div class="panel-title">Debrief</div><p id="debrief" class="debrief-text"></p></div>
+    </div>
+    <div class="finish-right">
+      <div class="panel save">
+        <button id="btn-save" class="btn-primary">Save to leaderboard</button>
+        <p id="save-status" class="meta"></p>
+      </div>
+      <div class="panel board">
+        <div class="panel-title">Leaderboard <span class="meta">tick up to 3</span></div>
+        <div id="board-rows" class="board-rows"></div>
+        <button id="btn-race-ghosts" class="btn-quiet" disabled>Race these ghosts</button>
+      </div>
+      <div class="panel ask">
+        <div class="panel-title">Ask the pit wall</div>
+        <div class="ask-row"><input id="ask-input" class="field" placeholder="Ask about the race, tyres or the leaderboard" autocomplete="off"><button id="btn-ask" class="btn-quiet">Ask</button></div>
+        <div class="ask-demos">
+          <button class="chip" data-q="Why did Norris beat Verstappen at Zandvoort 2024?">Why did Norris beat Verstappen at Zandvoort 2024?</button>
+          <button class="chip" data-q="How fast did the hard tyre degrade in 2024?">How fast did the hard tyre degrade in 2024?</button>
+          <button class="chip" data-q="Show the top 5 on the BoxBox leaderboard">Show the top 5 on the BoxBox leaderboard</button>
+        </div>
+        <div id="ask-answer" class="ask-answer" hidden>
+          <p id="ask-text"></p>
+          <details><summary id="ask-esql-count">ES|QL queries it ran</summary><div id="ask-esql"></div></details>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="howto" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="howto-title">
+  <header class="topbar">
+    <div class="brand"><span class="mark">BoxBox</span></div>
+    <h2 id="howto-title" class="ov-title">How it works</h2>
+    <div class="spacer"></div>
+    <span class="meta">Esc or H to close</span>
+    <button id="btn-howto-close" class="btn-quiet">Close</button>
+  </header>
+  <div class="ov-body">
+    <svg class="arch" viewBox="0 0 1600 800" role="img" aria-label="Architecture: Elastic telemetry to Hopsworks feature store to the game in the browser, with TypeSafe Jev, Claude via ES|QL COMPLETION, Agent Builder, Kibana and the leaderboard index">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c9cad0"/></marker>
+        <marker id="ah-o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ff7a1a"/></marker>
+      </defs>
+      <!-- step labels -->
+      <text class="a-step" x="30" y="30">1 · Raw data</text>
+      <text class="a-step" x="560" y="30">2 · Features and model</text>
+      <text class="a-step" x="1130" y="30">3 · The game</text>
+      <!-- A: Elastic -->
+      <rect class="a-box" x="30" y="48" width="440" height="340" rx="10"/>
+      <text class="a-h" x="60" y="104">Elastic Serverless</text>
+      <text class="a-t" x="60" y="156">f1-* indices</text>
+      <text class="a-t" x="60" y="196">2,869,213 telemetry samples</text>
+      <text class="a-t" x="60" y="236">Zandvoort 2023 and 2024</text>
+      <text class="a-t" x="60" y="276">Every query in ES|QL</text>
+      <!-- A -> B -->
+      <line class="a-ln" x1="474" y1="218" x2="552" y2="218" marker-end="url(#ah)"/>
+      <text class="a-lbl" x="513" y="204" text-anchor="middle">ES|QL</text>
+      <!-- B: Hopsworks -->
+      <rect class="a-box" x="560" y="48" width="480" height="340" rx="10"/>
+      <text class="a-h" x="590" y="104">Hopsworks feature store</text>
+      <text class="a-t" x="590" y="150">FG lap_features · <tspan class="a-num">2,769 laps</tspan></text>
+      <text class="a-t" x="590" y="186">FG driver_style · vector index</text>
+      <text class="a-t" x="590" y="222">FG jev_pitwall_calls</text>
+      <text class="a-t" x="590" y="258">Feature View laptime_fv</text>
+      <text class="a-t" x="590" y="294">Model Registry boxbox_laptime v1</text>
+      <text class="a-t a-hi" x="590" y="342">MAE 0.47 s on held-out stints</text>
+      <!-- B -> C -->
+      <line class="a-ln" x1="1044" y1="218" x2="1122" y2="218" marker-end="url(#ah)"/>
+      <text class="a-lbl" x="1085" y="204" text-anchor="middle">model</text>
+      <!-- C: browser -->
+      <rect class="a-box a-acc" x="1130" y="48" width="440" height="340" rx="10"/>
+      <text class="a-h" x="1160" y="104">Optimizer + game</text>
+      <text class="a-t" x="1160" y="146">in the browser</text>
+      <text class="a-t" x="1160" y="196">Every 1- and 2-stop plan</text>
+      <text class="a-t" x="1160" y="236">Real race replays to 0.00 s</text>
+      <text class="a-t" x="1160" y="276">BOX, timing tower, track map</text>
+      <text class="a-t" x="1160" y="316">Ghosts from the leaderboard</text>
+      <!-- live row -->
+      <text class="a-step" x="30" y="452">Live during the race (through the FastAPI server)</text>
+      <rect class="a-group" x="30" y="470" width="1060" height="310" rx="10"/>
+      <text class="a-h a-h2" x="56" y="514">Elastic services</text>
+      <g class="a-card"><rect x="50" y="534" width="248" height="226" rx="8"/>
+        <text class="a-t a-tb" x="70" y="578">Claude Sonnet 5</text><text class="a-t" x="70" y="614">via ES|QL</text><text class="a-t" x="70" y="646">COMPLETION</text><text class="a-s" x="70" y="700">Team radio</text><text class="a-s" x="70" y="730">and debrief</text></g>
+      <g class="a-card"><rect x="310" y="534" width="248" height="226" rx="8"/>
+        <text class="a-t a-tb" x="330" y="578">Agent Builder</text><text class="a-t" x="330" y="614">"BoxBox Pit Wall"</text><text class="a-t" x="330" y="646">5 ES|QL tools</text><text class="a-s" x="330" y="700">Ask the pit wall</text><text class="a-s" x="330" y="730">on the finish screen</text></g>
+      <g class="a-card"><rect x="570" y="534" width="248" height="226" rx="8"/>
+        <text class="a-t a-tb" x="590" y="578">Kibana</text><text class="a-t" x="590" y="614">dashboard</text><text class="a-t" x="590" y="646">"BoxBox Live"</text><text class="a-s" x="590" y="700">Runs and calls</text><text class="a-s" x="590" y="730">as they happen</text></g>
+      <g class="a-card"><rect x="830" y="534" width="240" height="226" rx="8"/>
+        <text class="a-t a-tb" x="850" y="578">boxbox-runs</text><text class="a-t" x="850" y="614">leaderboard</text><text class="a-t" x="850" y="646">index</text><text class="a-s" x="850" y="700">Every saved run</text><text class="a-s" x="850" y="730">becomes a ghost</text></g>
+      <rect class="a-box" x="1130" y="470" width="440" height="310" rx="10"/>
+      <text class="a-h" x="1160" y="526">TypeSafe Jev</text>
+      <text class="a-t" x="1160" y="570">System One model</text>
+      <text class="a-t" x="1160" y="616">Typed call: BOX or STAY OUT</text>
+      <text class="a-t" x="1160" y="656">plus a probability</text>
+      <text class="a-t a-hi" x="1160" y="716">about 0.4 s per lap</text>
+      <!-- links from the game -->
+      <line class="a-ln a-ln-o" x1="1350" y1="392" x2="1350" y2="462" marker-start="url(#ah-o)" marker-end="url(#ah-o)"/>
+      <path class="a-ln a-ln-o" d="M1180,392 L1180,430 L560,430 L560,462" fill="none" marker-start="url(#ah-o)" marker-end="url(#ah-o)"/>
+      <text class="a-lbl" x="870" y="420" text-anchor="middle">/api: radio, debrief, ask, runs</text>
+      <text class="a-lbl" x="1366" y="434">/api/jev</text>
+    </svg>
+    <h3 class="ov-sub">What the data says</h3>
+    <div id="insights" class="insights"></div>
+  </div>
+</section>
+
+</main>
+<script src="js/engine.js"></script>
+<script src="mock/mock.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
