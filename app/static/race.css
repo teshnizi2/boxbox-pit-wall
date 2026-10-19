@@ -290,3 +290,17 @@
   .screen.race .tyre-cliff { font-size: 24px; }
   .screen.race .tyre-rule { font-size: 19px; }
 }
+
+/* short laptop screens (<= 820 px tall): tighten the BOX / tyre-pick state so Jev's bottom row is not clipped */
+@media (min-width: 701px) and (max-height: 820px) {
+  .screen.race .compound-pick button { height: 60px; font-size: 22px; }
+  .screen.race .cp-l { width: 28px; height: 28px; font-size: 17px; }
+  .screen.race .box-note { font-size: 15px; min-height: 0; }
+  .screen.race .serve-line { font-size: 14px; }
+  .screen.race .jev-call { font-size: 40px; }
+  .screen.race .js-val { font-size: 28px; }
+  .screen.race .js-label { font-size: 13px; }
+  .screen.race .jev-panel { gap: 4px; padding: 8px 14px 8px; }
+  .screen.race .jev-panel .meter .m-label { font-size: 15px; }
+  .screen.race .jev-panel .panel-title { font-size: 18px; }
+}
