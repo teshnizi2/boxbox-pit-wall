@@ -403,3 +403,120 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .serve-line { font-size: 13px; }
   .room-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ===== design pass (19 Oct, hack night): bolder palette, bigger type, glow cards ===== */
+:root {
+  --ground: #08080f; --surface: #12121c; --raised: #1c1c2b; --border: rgba(255,255,255,.09); --rule: rgba(255,255,255,.07); --control: #4a4a63;
+  --text: #ffffff; --muted: #cfd1e0; --faint: #a9acc2;
+  --accent: #ff4a1c; --accent2: #ffb020; --accent-ink: #ffffff;
+  --positive: #2ee6a6; --negative: #ff5470; --warning: #ffd23f;
+  --radius: 14px; --gap: 16px;
+  --shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+  --font: "Inter", "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+html, body { background: radial-gradient(1200px 700px at 85% -10%, rgba(255,74,28,.20), transparent 60%), radial-gradient(900px 600px at -10% 110%, rgba(70,90,255,.18), transparent 60%), #08080f; background-attachment: fixed; font-size: 18px; }
+.topbar { background: rgba(14,14,24,.85); backdrop-filter: blur(8px); border-bottom: 0; box-shadow: 0 2px 0 0 var(--accent), 0 8px 30px rgba(255,74,28,.18); }
+.mark { font-size: 28px; font-weight: 800; letter-spacing: -.02em; font-style: italic; }
+.mark::after { width: 11px; height: 11px; box-shadow: 0 0 14px var(--accent); }
+.panel, .stile { background: linear-gradient(180deg, #181826, #10101a); border: 1px solid var(--border); }
+.panel-title { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.btn-primary { background: linear-gradient(135deg, #ff4a1c, #ff8a1c); color: #fff; font-size: 22px; font-weight: 800; height: 62px; box-shadow: 0 8px 28px rgba(255,74,28,.45); letter-spacing: .01em; transition: transform .12s, box-shadow .12s; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 34px rgba(255,74,28,.6); }
+.btn-quiet { height: 44px; font-size: 18px; padding: 0 20px; border-color: rgba(255,255,255,.28); }
+.field { height: 54px; font-size: 20px; background: #0c0c15; border-radius: 12px; }
+.hook { font-size: 66px; line-height: 1; font-weight: 900; letter-spacing: -.03em; background: linear-gradient(90deg, #fff 30%, #ffb020 75%, #ff4a1c); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lede { font-size: 22px; color: var(--muted); }
+.dcard { padding: 14px 14px 14px 22px; background: linear-gradient(180deg, #1a1a29, #121220); transition: transform .12s, box-shadow .12s, border-color .12s; }
+.dcard::before { width: 8px; box-shadow: 0 0 18px var(--team); }
+.dcard:hover { transform: translateY(-2px); border-color: var(--team); box-shadow: 0 8px 22px rgba(0,0,0,.5); }
+.dcard.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 30px rgba(255,74,28,.4); background: linear-gradient(180deg, #2a1820, #161220); }
+.dc-code { font-size: 32px; font-weight: 900; letter-spacing: -.01em; }
+.dc-name { font-size: 20px; font-weight: 600; }
+.dc-opp .o-bar { height: 8px; }
+.dc-opp .o-fill { background: linear-gradient(90deg, #ffb020, #ff4a1c); }
+.stile .s-fig { font-size: 46px; font-weight: 800; }
+.stile .s-fig.acc { color: var(--accent2); }
+.tb-big { font-size: 44px; font-weight: 800; }
+.tyre-disc { width: 72px; height: 72px; font-size: 28px; box-shadow: 0 0 22px var(--c, #f5c518); }
+.tyre-name { font-size: 28px; font-weight: 800; }
+.health { height: 16px; }
+.health-fill { background: linear-gradient(90deg, #2ee6a6, #8ef0c8); }
+.seg { font-size: 16px; }
+.stint-bar { height: 30px; border-radius: 8px; }
+.radio-feed li { font-size: 20px; }
+.status { font-size: 16px; }
+@media (min-width: 700px) {
+.meta { font-size: 18px; }
+.tb-event { font-size: 18px; }
+.tb-label { font-size: 18px; }
+.tb-sub { font-size: 18px; }
+.speed button { font-size: 18px; }
+.status { font-size: 18px; }
+.panel-title { font-size: 19px; }
+.empty { font-size: 18px; }
+.btn-quiet { font-size: 18px; }
+.field { font-size: 19px; }
+.field-label { font-size: 18px; }
+.stile .s-text { font-size: 18px; }
+.dc-opp .o-text { font-size: 18px; }
+.dc-gf { font-size: 18px; }
+.dc-name { font-size: 19px; }
+.dc-team { font-size: 18px; }
+.picked { font-size: 18px; }
+.keys { font-size: 18px; }
+.gp-meta { font-size: 18px; }
+.map-key { font-size: 18px; }
+.stint-who { font-size: 18px; }
+.stint-label { font-size: 18px; }
+.seg { font-size: 18px; }
+.radio-feed li { font-size: 18px; }
+.r-lap { font-size: 18px; }
+.tyre-cliff { font-size: 18px; }
+.tyre-rule { font-size: 18px; }
+.compound-pick button { font-size: 19px; }
+.box-note { font-size: 18px; }
+.serve-line { font-size: 18px; }
+.repo-link { font-size: 18px; }
+.ov-foot { font-size: 18px; }
+.m-label { font-size: 18px; }
+.m-val { font-size: 18px; }
+.jev-src { font-size: 18px; }
+.js-label { font-size: 18px; }
+.dc-table { font-size: 18px; }
+.twin { font-size: 18px; }
+.twin .meta { font-size: 18px; }
+.trow, .crow { font-size: 19px; }
+.trow.thead { font-size: 18px; }
+.t-gap { font-size: 18px; }
+.t-tyre { font-size: 18px; }
+.t-stops { font-size: 18px; }
+.thead .t-gap, .thead .t-tyre, .thead .t-stops { font-size: 18px; }
+.tyre-dot { font-size: 18px; }
+.tag-you { font-size: 18px; }
+.tag-ghost { font-size: 18px; }
+.c-name { font-size: 18px; }
+.res-sub { font-size: 18px; }
+.cmp-table { font-size: 19px; }
+.cmp-table th { font-size: 18px; }
+.debrief-text { font-size: 19px; }
+.brow { font-size: 18px; }
+.b-stints { font-size: 18px; }
+.ask-row .field { font-size: 18px; }
+.ask-answer p { font-size: 18px; }
+.ask-answer summary { font-size: 18px; }
+.ask-answer pre { font-size: 18px; }
+.rrow.rhead { font-size: 18px; }
+.r-name small { font-size: 18px; }
+.icard .i-label { font-size: 18px; }
+.icard .i-text { font-size: 19px; }
+.chip { font-size: 18px; }}
+@media (min-width: 700px) {
+  .dc-opp .o-text { font-size: 16px; }
+  .dc-gf { font-size: 16px; }
+  .dc-top { flex-wrap: wrap; }
+}
+@media (min-width: 700px) {
+  .topbar { gap: 22px; }
+  .tb-item, .tb-big, .tb-label, .brand-sub { white-space: nowrap; }
+  .tb-big { font-size: 38px; }
+}
