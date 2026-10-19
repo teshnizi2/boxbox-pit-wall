@@ -25,6 +25,7 @@
     '--h1:clamp(56px,min(9vw,14.5vh),150px);--bar:max(7vh,66px);--ty:clamp(96px,min(12vw,18vh),220px);',
     'user-select:none;-webkit-user-select:none;cursor:default}',
     '#bbx-trailer *{box-sizing:border-box;margin:0;padding:0}',
+    '@keyframes bbxkb{from{transform:scale(1.03)}to{transform:scale(1.15)}}',
     '#bbx-trailer .stage{position:absolute;top:0;left:0;right:0;bottom:0;will-change:transform}',
     '#bbx-trailer .f{position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;justify-content:center;',
     'padding:var(--bar) 3vw;text-align:center;overflow:hidden}',
@@ -152,6 +153,11 @@
       var it = o || {}; it.el = mkEl('t ' + (cls || ''), parent || f.el, html); f.items.push(it); return it;
     }
     function row(f) { return mkEl('row', f.el); }
+    function shot(f, url, op, pos) {
+      var e = mkEl('bg', f.el);
+      e.style.cssText += ';background:linear-gradient(180deg,rgba(0,0,0,.45),rgba(0,0,0,.2) 50%,rgba(0,0,0,.55)),url(' + url + ') ' + (pos || 'center') + '/cover;opacity:' + op + ';animation:bbxkb 4s linear forwards;filter:saturate(1.15)';
+      return e;
+    }
 
     /* F1: track draws itself, "Zandvoort. 2024." */
     var f1 = frame(0, 3.5, { push: 0.05 });
@@ -161,7 +167,11 @@
       '<path id="bbx-gl" d="' + pathD + '" fill="none" stroke="#ff4a1c" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" pathLength="1" style="filter:blur(9px);opacity:.55"/>' +
       '<path id="bbx-mn" d="' + pathD + '" fill="none" stroke="url(#bbxg)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/>' +
       '<path id="bbx-co" d="' + pathD + '" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/>' +
-      '<circle id="bbx-hd" r="15" fill="#fff" style="filter:drop-shadow(0 0 14px #ff4a1c) drop-shadow(0 0 30px #ff4a1c);opacity:0"/></svg>';
+      '<g id="bbx-hd" style="filter:drop-shadow(0 0 12px #ff4a1c) drop-shadow(0 0 26px rgba(255,74,28,.8));opacity:0"><g transform="scale(2.2)">' +
+      '<rect x="-34" y="-3" width="66" height="6" rx="3" fill="#ff4a1c"/><rect x="-38" y="-14" width="9" height="28" rx="2" fill="#fff"/><rect x="26" y="-13" width="9" height="26" rx="2" fill="#fff"/>' +
+      '<rect x="-24" y="-12" width="12" height="7" rx="2" fill="#111" stroke="#fff" stroke-width="1"/><rect x="-24" y="5" width="12" height="7" rx="2" fill="#111" stroke="#fff" stroke-width="1"/>' +
+      '<rect x="12" y="-12" width="12" height="7" rx="2" fill="#111" stroke="#fff" stroke-width="1"/><rect x="12" y="5" width="12" height="7" rx="2" fill="#111" stroke="#fff" stroke-width="1"/>' +
+      '<path d="M-10,-6 L14,-3 L30,0 L14,3 L-10,6 Z" fill="#ff4a1c" stroke="#fff" stroke-width="1.2"/><circle cx="-1" cy="0" r="3.2" fill="#ffb020"/></g></g></svg>';
     var pGl = wrap.querySelector('#bbx-gl'), pMn = wrap.querySelector('#bbx-mn'), pCo = wrap.querySelector('#bbx-co'), hd = wrap.querySelector('#bbx-hd');
     var plen = 1; try { plen = pMn.getTotalLength() || 1; } catch (e) { plen = 1; }
     [pGl, pMn, pCo].forEach(function (p) { p.style.strokeDasharray = '1 1'; p.style.strokeDashoffset = '1'; });
@@ -172,7 +182,8 @@
       pGl.style.strokeDashoffset = off; pMn.style.strokeDashoffset = off; pCo.style.strokeDashoffset = off;
       if (p > 0.002 && p < 0.999) {
         var pt = null; try { pt = pMn.getPointAtLength(p * plen); } catch (e) { pt = null; }
-        if (pt) { hd.setAttribute('cx', pt.x); hd.setAttribute('cy', pt.y); hd.style.opacity = 1; } else hd.style.opacity = 0;
+        var pt2 = null; try { pt2 = pMn.getPointAtLength(Math.min(plen, p * plen + 6)); } catch (e) { pt2 = null; }
+        if (pt) { var ang = pt2 ? Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180 / Math.PI : 0; hd.setAttribute('transform', 'translate(' + pt.x.toFixed(1) + ',' + pt.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')'); hd.style.opacity = 1; } else hd.style.opacity = 0;
       } else hd.style.opacity = 0;
       wrap.style.opacity = (pr(t, 0, 0.3) * (1 - pr(t, 3.3, 3.5))).toFixed(3);
     };
@@ -180,10 +191,12 @@
     /* F2a: Max Verstappen. */
     var f2a = frame(3.5, 5.0, { push: 0.07 });
     mkEl('bg', f2a.el).style.background = 'radial-gradient(ellipse at 50% 60%,rgba(255,74,28,.2),transparent 62%)';
+    var photoA = mkEl('bg', f2a.el); photoA.style.cssText += ';background:linear-gradient(90deg,rgba(0,0,0,.35),rgba(0,0,0,.05) 50%,rgba(0,0,0,.45)),url(img/hero.jpg) center/cover;opacity:.9;z-index:0';
     item(f2a, null, '1', 'ghost', { k: 'fade', a: 3.5, d: 0.5, fx: function (t) { return { s: 1 + 0.12 * pr(t, 3.5, 5) }; } });
     var streak = mkEl('streak', f2a.el);
     item(f2a, null, 'Max Verstappen.', 'h w it', { k: 'slam', a: 3.5, d: 0.22, from: 1.0, b: 4.85, od: 0.15 });
     f2a.upd = function (t) {
+      photoA.style.transform = 'scale(' + (1.06 + 0.1 * pr(t, 3.5, 5)).toFixed(3) + ') translateX(' + (3 - 7 * pr(t, 3.5, 5)).toFixed(2) + '%)';
       var p = pr(t, 3.55, 4.25);
       streak.style.opacity = p > 0 && p < 1 ? 1 : 0;
       streak.style.transform = 'translateX(' + (-80 + 190 * ez.oc(p)).toFixed(1) + 'vw)';
@@ -191,10 +204,12 @@
 
     /* F2b: Home crowd. Home race. */
     var f2b = frame(5.0, 6.5, { push: 0.06 });
+    var photoB = mkEl('bg', f2b.el); photoB.style.cssText += ';background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,.25) 50%,rgba(0,0,0,.6)),url(img/pitwall.jpg) center/cover;opacity:.85';
     var glowB = mkEl('bg', f2b.el);
     item(f2b, null, 'Home crowd.', 'h w it', { k: 'slam', a: 5.0, d: 0.22, b: 6.35, od: 0.15 });
     item(f2b, null, 'Home race.', 'h o it', { k: 'slam', a: 5.7, d: 0.22, b: 6.35, od: 0.15 });
     f2b.upd = function (t) {
+      photoB.style.transform = 'scale(' + (1.12 - 0.08 * pr(t, 5.0, 6.5)).toFixed(3) + ')';
       var pulse = 0.28 + 0.14 * Math.pow(Math.max(0, Math.sin((t - 5.0) * Math.PI / 0.6)), 2);
       glowB.style.background = 'radial-gradient(ellipse at 50% 55%,rgba(255,74,28,' + pulse.toFixed(3) + '),transparent 66%)';
     };
@@ -211,6 +226,7 @@
 
     /* F3: Was it the pit wall? */
     var f3 = frame(8.0, 10.5, { push: 0.1 });
+    shot(f3, 'img/shot-finish.jpg', 0.5);
     mkEl('bg', f3.el).style.background = 'radial-gradient(ellipse at 50% 70%,rgba(255,74,28,.14),transparent 60%)';
     item(f3, null, 'Was it', 'h w it', { k: 'blur', a: 8.1, d: 0.95, b: 10.33, od: 0.15 });
     item(f3, null, 'the <span class="o">pit wall?</span>', 'h w it', { k: 'blur', a: 8.6, d: 0.95, b: 10.33, od: 0.15 });
@@ -222,6 +238,7 @@
 
     /* F4: Tonight, YOU are the pit wall. + tyres + BOX */
     var f4 = frame(11.0, 14.5, { push: 0.05 });
+    shot(f4, 'img/shot-race.jpg', 0.55);
     mkEl('bg', f4.el).style.background = 'radial-gradient(ellipse at 50% 105%,rgba(255,74,28,.32),transparent 60%)';
     var r1 = row(f4);
     item(f4, r1, 'Tonight,', 'h w it', { k: 'slam', a: 11.0, d: 0.2, b: 14.3, od: 0.2 });
@@ -270,6 +287,7 @@
 
     /* F6: Elastic. Hopsworks. Jev. Claude. */
     var f6 = frame(19.5, 23.0, { push: 0.04 });
+    shot(f6, 'img/shot-how.jpg', 0.45);
     mkEl('bg', f6.el).style.background = 'radial-gradient(ellipse at 50% 55%,rgba(255,176,32,.13),transparent 62%)';
     [['Elastic.', 'g', 'left', 19.6, -5], ['Hopsworks.', 'w', 'right', 20.3, 5], ['Jev.', 'o', 'slam', 21.0, -5], ['Claude.', 'w', 'blur', 21.7, 5]].forEach(function (w) {
       item(f6, null, w[0], 'stack it ' + w[1], { k: w[2], a: w[3], d: w[2] === 'slam' ? 0.2 : 0.5, ox: w[4], b: 22.85, od: 0.12 });
