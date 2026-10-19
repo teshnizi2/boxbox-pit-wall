@@ -229,7 +229,7 @@
 #screen-room .room-lobby .panel-title { grid-area: title; font-size: 36px; margin-bottom: 4px; }
 #screen-room .room-lobby .panel-title::before { height: 36px; }
 #screen-room .room-qr { grid-area: qr; width: clamp(340px, 24vw, 460px); height: clamp(340px, 24vw, 460px); padding: 14px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 4px var(--f-orange), 0 0 44px rgba(255,106,0,.55); animation: fz-pop .6s .2s both; }
-#screen-room .room-url { grid-area: url; align-self: end; font-family: var(--font); font-weight: 700; font-size: 28px; line-height: 1.25; color: var(--f-ice); text-align: left; word-break: break-all; text-shadow: 0 0 16px rgba(61,225,255,.4); }
+#screen-room .room-url { grid-area: url; align-self: end; font-family: var(--font); font-weight: 700; font-size: 22px; line-height: 1.25; color: var(--f-ice); text-align: left; word-break: break-all; text-shadow: 0 0 16px rgba(61,225,255,.4); }
 #screen-room .room-lobby .btn-primary { grid-area: btn; max-width: none; width: 100%; height: 108px; border-radius: 16px; font-family: var(--f-dsp); font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; font-size: 52px; background: linear-gradient(135deg, var(--f-red), var(--f-orange)); animation: fz-pulse 2s ease-in-out infinite; }
 #screen-room .room-lobby .btn-primary:disabled { animation: none; }
 #screen-room .room-lobby #room-start-note { grid-area: note; align-self: start; margin: 0; font-size: 20px; color: var(--muted); }
