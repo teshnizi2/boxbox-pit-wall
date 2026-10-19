@@ -1113,8 +1113,8 @@
       if (k === 'h') { e.preventDefault(); $('#howto').hidden ? openHowto() : closeHowto(); }
       else if (k === 'escape' && !$('#howto').hidden) closeHowto();
     });
-    window.addEventListener('resize', () => { if (S.screen === 'race') resizeMap(); });
-    try { new ResizeObserver(() => { if (S.screen === 'race') resizeMap(); }).observe($('.map-panel')); } catch (e) { /* older browsers: window resize only */ }
+    window.addEventListener('resize', () => { if (S.screen === 'race' || S.screen === 'room') resizeMap(); });
+    try { const ro = new ResizeObserver(() => { if (S.screen === 'race' || S.screen === 'room') resizeMap(); }); document.querySelectorAll('.map-panel').forEach(el => ro.observe(el)); } catch (e) { /* older browsers: window resize only */ }
     document.addEventListener('keydown', (e) => {
       if (S.screen !== 'race' || e.target.tagName === 'INPUT') return;
       const k = e.key.toLowerCase();
